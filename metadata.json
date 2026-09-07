@@ -1,0 +1,6 @@
+{
+  "name": "MyTuition",
+  "description": "MyTuition is a student/parent-facing education application for tuition and coaching centers. Its product philosophy is minimal, calm, fast and easy to use.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

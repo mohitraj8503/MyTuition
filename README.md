@@ -1,8 +1,11 @@
 <div align="center">
 
-# 🎓 MyTuition
+<img src="art/logo.png" alt="MyTuition Logo" width="240" />
+
+# MyTuition
 
 ### *A Minimal, Calm, and Lightning-Fast Education Companion for Students & Parents*
+*Learn • Teach • Grow Together*
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Android](https://img.shields.io/badge/Android-API%2024%2B-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)

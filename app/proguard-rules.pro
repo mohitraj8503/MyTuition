@@ -11,7 +11,7 @@
 
 # ---------- Keep only the app entry point ----------
 -keep public class com.example.mytuition.MainActivity { *; }
--keep public class com.aistudio.mytuition.abxycd.** extends android.app.Application { *; }
+-keep public class com.mytuition.app.** extends android.app.Application { *; }
 
 # ---------- Keep Android framework hooks ----------
 -keep public class * extends android.app.Activity

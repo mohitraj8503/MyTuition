@@ -46,4 +46,5 @@ sealed interface SplashState {
     object Loading : SplashState
     object NavigateToHome : SplashState
     object NavigateToLogin : SplashState
+    object NavigateToOnboarding : SplashState
 }

@@ -1,278 +1,236 @@
 <div align="center">
 
-<a href="#readme">
-  <img src="art/logo_horizontal.png" alt="MyTuition — Learn • Teach • Grow Together" width="580" />
-</a>
+<img src="art/logo.png" width="120" alt="MyTuition Logo"/>
 
-<br/>
-<br/>
+# MyTuition
+### Your offline tuition coaching companion
 
-### *A Minimal, Calm, and Lightning-Fast Education Companion for Students & Parents*
+[![Release](https://img.shields.io/github/v/release/mohitraj8503/MyTuition?color=6C48FF&label=Latest%20Release&style=for-the-badge)](https://github.com/mohitraj8503/MyTuition/releases/latest)
+[![Android](https://img.shields.io/badge/Android-5.0%2B-3DDC84?style=for-the-badge&logo=android)](https://android.com)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=for-the-badge&logo=kotlin)](https://kotlinlang.org)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-UI-4285F4?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
+[![Firebase](https://img.shields.io/badge/Firebase-Backend-FFCA28?style=for-the-badge&logo=firebase)](https://firebase.google.com)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Android](https://img.shields.io/badge/Android-API%2024%2B-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Material 3](https://img.shields.io/badge/Material%203-Neo--Brutalist-D4FF26.svg?style=for-the-badge&logo=materialdesign&logoColor=black)](https://m3.material.io)
-[![Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20MVVM-FF8080.svg?style=for-the-badge)](https://developer.android.com/topic/architecture)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+**A beautiful, production-ready Android app for offline coaching/tuition centres.**  
+Students track daily schedules, homework, attendance, and fees — all in one place.
 
-<br/>
-
-> **MyTuition** is a modern student- and parent-facing Android application crafted for coaching institutes, tuition centers, and independent educators. Built on the philosophy of **calm design, lightning-fast native performance, and effortless usability**, it strips away the bloat of traditional academic ERPs and focuses purely on what matters: **today's classes, pending tasks, study resources, and academic progress.**
-
----
+[📲 Download APK](https://github.com/mohitraj8503/MyTuition/releases/latest) · [🐛 Report Bug](https://github.com/mohitraj8503/MyTuition/issues) · [✨ Request Feature](https://github.com/mohitraj8503/MyTuition/issues)
 
 </div>
 
-## 🌟 Product Philosophy
+---
 
-Most education ERP software is cluttered, slow, and overwhelming. **MyTuition** reimagines the student experience from the ground up:
+## 📸 Screenshots
 
-* 🧘‍♂️ **Calm & Distraction-Free**: Generous whitespace, purposeful typography, and a curated color palette ensure zero cognitive overload.
-* ⚡ **Lightning-Fast Native Compose**: Built 100% with declarative Jetpack Compose, state-driven reactivity via Kotlin `StateFlow`, and buttery-smooth 60/120 FPS animations.
-* 🎨 **Neo-Brutalist Claymorphic Design**: Tactile rounded surfaces, subtle shadows, organic rotations, and high-contrast accents (Warm Ivory, Premium Lime `#D4FF26`, Electric Purple `#7B52FF`, Soft Coral, Sky Blue).
-* 🛡️ **Clean Architecture**: Domain-driven, testable, and loosely coupled. Swapping mock data with a real REST/GraphQL or Firebase backend takes minutes.
+> **Demo mode available** — tap "Try demo mode →" on login to explore without signing up.
+
+| Login | Home | Homework | Schedule |
+|-------|------|----------|----------|
+| Claymorphic OTP login | Next class + timeline | Subject-wise homework | Weekly date chips |
 
 ---
 
-## 📸 Key Features & Screen Catalog
+## ✨ Features
 
-### 1. 🚀 Splash & Fluid Mascot Login
-* **Playful Interactive Mascot**: Animated character with eye-tracking and personality that greets students on launch.
-* **Frictionless Onboarding**: One-tap demo login, student phone/OTP authentication, Google Sign-In, and GitHub authentication.
-* **Role Recognition**: Automatically adapts dashboard views for **Students** and **Parents**.
+### 🏫 For Students
+- **📅 Daily Schedule** — See today's classes with subject, teacher, time & room number
+- **⏰ Next Class Card** — Countdown to your upcoming class (e.g. "Room 4B, Today 5:00 PM")
+- **📝 Homework Tracker** — Subject-wise pending homework with swipe-to-complete
+- **✅ Attendance** — Live attendance percentage with class-by-class history
+- **💰 Fee Status** — Monthly fee status (Paid / Pending / Overdue) + Razorpay payment
+- **📢 Announcements** — Institute-wide notices and updates
+- **🎮 Demo Mode** — Explore the full app without signing in
 
-### 2. 🏠 Intelligent Home Dashboard
-* **Hero "YOUR DAY" Card**: Instant glance at the next upcoming class, lecture timing, room location, and live status.
-* **Interactive Subjects Carousel**: Custom hand-drawn canvas icons (Math, Physics, Chemistry, English) with spring physics and tactile tap effects that jump directly into subject details.
-* **"Things to Finish" Widget**: Live circular progress ring tracking pending assignments and quick-navigation to deadlines.
-* **Quiet Info Stream**: Non-intrusive fee payment status (`₹2,500 due on 10 Sep`) and institute announcements.
-
-### 3. 📝 Homework Command Center
-* **Dynamic Filter Tabs**: Filter assignments by **All**, **Pending**, **Completed**, and **Overdue**.
-* **Status Badges**: Distinct visual pills with real-time countdowns (`Due in 2 days`, `Overdue`).
-* **Deep Homework Details**: Complete assignment guidelines, teacher instructions, and one-tap download for attached study materials & PDFs.
-* **Instant Completion Toggle**: Seamlessly mark assignments as completed with immediate state updates.
-
-### 4. 📚 Subjects & Resources Directory
-* **Staggered Subject Grid**: Beautiful claymorphic cards displaying teacher names, pending task counters, and available learning resources.
-* **Subject Detail Hub**: Dedicated view for each subject containing historical homework, chapter notes, and question banks.
-
-### 5. 📅 Dynamic Timetable & Calendar
-* **Horizontal Week Selector**: Fluid day-by-day strip (`Mon 8` through `Sun 14`) with reactive selection states and spring animations.
-* **Session Cards**: Color-coded cards for scheduled lectures, lab exams, doubt-clearing sessions, and Parent-Teacher Meetings (PTMs).
-
-### 6. 👤 Student Profile & Settings
-* **Student Identity Card**: Mohit Raj · Class 10-A with custom avatar badge.
-* **Settings & Preferences**: Push notifications, language preferences, support contact, and privacy controls.
-* **One-Tap Logout**: Secure session teardown returning to the login flow.
+### 🔥 Tech Highlights
+- **Claymorphic UI** — Soft clay design system with bouncy spring animations
+- **Real-time Data** — Firestore real-time listeners for live schedule updates  
+- **Offline-first** — Firestore offline persistence — works without internet
+- **Firebase Auth** — Phone OTP + Google Sign-In
+- **Cloud Functions** — Razorpay payment integration via Firebase Functions (asia-south1)
+- **Clean Architecture** — MVVM + Repository pattern + Hilt-ready DI container
 
 ---
 
-## 🏗️ Architecture & Blueprint
+## 🏗️ Architecture
 
-MyTuition strictly follows **Clean Architecture** combined with the **Unidirectional Data Flow (UDF)** pattern:
-
-```mermaid
-graph TD
-    subgraph UI_Layer ["🎨 Presentation Layer (Jetpack Compose)"]
-        A[MainActivity / AppNavGraph]
-        B[Feature Screens: Home, Homework, Subjects, Calendar, Profile]
-        C[ViewModels: HomeViewModel, HomeworkViewModel, etc.]
-    end
-
-    subgraph Domain_Layer ["🧠 Domain Layer (Pure Kotlin)"]
-        D[Use Cases: GetHomeworkListUseCase, GetSubjectDetailUseCase, etc.]
-        E[Domain Models: Homework, Subject, Resource, UserSession]
-        F[Repository Interfaces: HomeworkRepository, SubjectRepository, AuthRepository]
-    end
-
-    subgraph Data_Layer ["💾 Data Layer"]
-        G[Repository Implementations: Mock/Remote Repositories]
-        H[Data Sources: Local Cache / Room / Remote REST API / Firebase]
-    end
-
-    B -->|User Actions| C
-    C -->|Exposes StateFlow| B
-    C -->|Invokes| D
-    D -->|Calls| F
-    G -.->|Implements| F
-    G -->|Fetches Data| H
-    D -->|Uses| E
 ```
-
-### Unidirectional Data Flow (UDF)
-1. **User Action / Event**: User taps a filter, clicks a subject, or marks homework done.
-2. **ViewModel Handling**: ViewModel receives event, launches coroutine in `viewModelScope`, and triggers Domain Use Cases.
-3. **Repository Execution**: Use case executes business logic against repository.
-4. **StateFlow Emission**: `UiState` emits `Loading`, `Success(data)`, or `Error(message)`.
-5. **Declarative Recomposition**: Compose UI passively observes `uiState.collectAsState()` and renders pixel-perfect screens.
-
----
-
-## 🛠️ Technology Stack
-
-| Component | Technology | Description |
-| :--- | :--- | :--- |
-| **Language** | Kotlin 2.0+ | Modern, safe, and expressive language for Android |
-| **UI Framework** | Jetpack Compose | Modern declarative UI toolkit |
-| **Design System** | Material 3 + Custom Tokens | Custom palette (`WarmIvory`, `PremiumLime`, `PremiumPurple`, `PremiumCoral`) |
-| **Architecture** | Clean Architecture + MVVM | Scalable presentation, domain, and data separation |
-| **Async & Concurrency** | Kotlin Coroutines & StateFlow | Reactive, thread-safe asynchronous data streaming |
-| **Navigation** | Navigation Compose | Type-safe in-app routing via `AppNavGraph` and `Routes` |
-| **Dependency Injection** | AppContainer Pattern | Lightweight service locator and constructor injection |
-| **Image Loading** | Coil Compose | Asynchronous image loading with caching |
-| **Testing** | JUnit 4, Coroutines Test, Roborazzi | Unit testing, ViewModel tests, and snapshot testing |
-
----
-
-## 📂 Project Directory Structure
-
-```text
 MyTuition/
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── AndroidManifest.xml
-│   │   │   ├── java/com/example/mytuition/
-│   │   │   │   ├── MainActivity.kt               # Single Activity host with edge-to-edge
-│   │   │   │   ├── MyTuitionApp.kt               # Application entry point
-│   │   │   │   ├── core/
-│   │   │   │   │   ├── data/repository/          # Mock and network repository implementations
-│   │   │   │   │   ├── designsystem/             # Color tokens, Typography, Shapes, Theme
-│   │   │   │   │   ├── di/                       # AppContainer dependency container
-│   │   │   │   │   ├── domain/
-│   │   │   │   │   │   ├── model/                # Homework, Subject, Resource, UserSession
-│   │   │   │   │   │   ├── repository/           # AuthRepository, HomeworkRepository, SubjectRepository
-│   │   │   │   │   │   └── usecase/              # Business use cases
-│   │   │   │   │   └── navigation/               # Routes.kt and AppNavGraph.kt
-│   │   │   │   └── feature/
-│   │   │   │       ├── auth/                     # LoginScreen & interactive mascot
-│   │   │   │       ├── calendar/                 # CalendarScreen with interactive week picker
-│   │   │   │       ├── home/                     # MainScreen, HomeScreen, HomeViewModel, FloatingNav
-│   │   │   │       ├── homework/                 # HomeworkScreen, HomeworkDetailScreen, HomeworkViewModel
-│   │   │   │       ├── profile/                  # ProfileScreen with settings & logout
-│   │   │   │       ├── splash/                   # SplashScreen with branded animation
-│   │   │   │       └── subjects/                 # SubjectsScreen, SubjectDetailScreen, SubjectsViewModel
-│   │   │   └── res/                              # Drawables, strings, mipmaps, and XML configs
-│   │   └── test/                                 # Unit & ViewModel tests (Subject, Homework, Auth)
-│   ├── build.gradle.kts                          # App build configuration & dependencies
-│   └── proguard-rules.pro                        # R8/Proguard optimization rules
-├── gradle/                                       # Gradle wrapper and version catalogs (libs.versions.toml)
-├── .gitignore                                    # Production-grade gitignore for Android
-├── build.gradle.kts                              # Root project configuration
-├── settings.gradle.kts                           # Module and plugin management
-└── README.md                                     # Project documentation
+├── app/src/main/java/com/example/mytuition/
+│   ├── core/
+│   │   ├── data/
+│   │   │   ├── model/          # Firestore document models + mappers
+│   │   │   ├── repository/     # Firebase repository implementations
+│   │   │   └── FirebaseConfig  # Firebase singleton setup
+│   │   ├── designsystem/       # Claymorphic design tokens + components
+│   │   │   └── components/     # NextClassCard, ShortcutRow, FeeStatusBottomSheet…
+│   │   ├── di/                 # AppContainer (dependency injection)
+│   │   ├── domain/
+│   │   │   ├── model/          # UserSession, HomeData, FeeStatus, HomeSummary…
+│   │   │   └── repository/     # Repository interfaces
+│   │   └── navigation/         # AppNavGraph + Routes
+│   └── feature/
+│       ├── auth/               # Login (Phone OTP + Google + Demo Mode)
+│       ├── home/               # HomeScreen + HomeViewModel
+│       ├── homework/           # HomeworkScreen + HomeworkViewModel
+│       ├── classdetail/        # Class Detail Screen
+│       ├── subjects/           # Subject List + Subject Detail
+│       ├── calendar/           # Calendar Screen
+│       └── profile/            # Profile Screen
+├── functions/                  # Firebase Cloud Functions (TypeScript)
+│   └── src/
+│       ├── index.ts            # 11 callable functions
+│       └── seed.ts             # Firestore seed script
+└── firestore.rules             # Role-based security rules
 ```
+
+**Pattern:** `UI (Compose) → ViewModel → Repository → Firestore/Firebase`
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-* **Android Studio**: Android Studio Koala / Ladybug (2024.1+) or newer
-* **JDK**: OpenJDK 17 or JDK 21
-* **Android SDK**: Min SDK 24 (Android 7.0) · Target SDK 36 (Android 15)
-* **Gradle**: Gradle 8.7+ (configured via Gradle Wrapper)
+- Android Studio Hedgehog or newer
+- JDK 17+
+- Firebase project (or use Demo Mode without one)
 
-### Installation & Run
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/mohitraj8503/MyTuition.git
-   cd MyTuition
-   ```
-
-2. **Open in Android Studio**:
-   - Open Android Studio.
-   - Select **File > Open...** and choose the `MyTuition` project root.
-   - Allow Gradle Sync to finish automatically.
-
-3. **Run on an Emulator or Physical Device**:
-   - Select an Android Virtual Device (AVD with API 24+) or connect an Android phone with USB Debugging enabled.
-   - Press **Run ▶ (Shift + F10)** or build via CLI:
-     ```bash
-     ./gradlew assembleDebug
-     ```
-
-4. **Install Debug APK directly via ADB**:
-   ```bash
-   adb install -r app/build/outputs/apk/debug/app-debug.apk
-   ```
-
----
-
-## 🧪 Testing Suite
-
-MyTuition includes comprehensive unit tests for business logic, repositories, and ViewModels:
-
+### 1. Clone
 ```bash
-# Run all local JVM unit tests
-./gradlew testDebugUnitTest
-
-# Run Roborazzi Compose screenshot verification (if configured)
-./gradlew verifyRoborazziDebug
+git clone https://github.com/mohitraj8503/MyTuition.git
+cd MyTuition
 ```
 
-### Covered Test Cases:
-* ✅ `HomeworkViewModelTest`: State emissions, filter transformations, and status filtering.
-* ✅ `HomeworkDetailViewModelTest`: Attachment loading and marking homework completed.
-* ✅ `SubjectsViewModelTest`: Subject listing and task counts.
-* ✅ `SubjectDetailViewModelTest`: Resource retrieval and recent assignment aggregation.
+### 2. Firebase Setup (optional — skip to use Demo Mode)
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com)
+2. Add Android app with package `com.aistudio.mytuition.abxycd`
+3. Download `google-services.json` → place in `app/`
+4. Enable **Authentication** (Phone + Anonymous)
+5. Enable **Firestore** in asia-south1 region
+6. Deploy rules: `firebase deploy --only firestore:rules`
+
+### 3. Seed Demo Data (optional)
+```bash
+cd functions
+npm install
+npm run build
+# Set FIREBASE_PROJECT_ID env then:
+node lib/seed.js
+```
+
+### 4. Build & Run
+```bash
+./gradlew assembleDebug
+# Install on connected device/emulator:
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+Or simply open in Android Studio and press **▶ Run**.
 
 ---
 
-## 🎨 Design System Guide
+## 🎮 Demo Mode
 
-MyTuition uses a proprietary design language tailored for students:
+No Firebase project? No problem.
 
-```kotlin
-// Core Brand Colors
-val WarmIvory       = Color(0xFFFBF9F6)   // Main screen background, eliminates eye fatigue
-val PremiumPurple   = Color(0xFF7B52FF)   // Primary accent, brand identity, and hero banner
-val PremiumLime     = Color(0xFFD4FF26)   // Active highlights, badges, and progress meters
-val PremiumCoral    = Color(0xFFFF8080)   // Urgent deadlines, alerts, and overdue items
-val PremiumBlue     = Color(0xFF90D0FF)   // Resource materials and science cards
-val PremiumLavender = Color(0xFFD2B0FF)   // Secondary subject tags and accents
-val DeepNavyText    = Color(0xFF13131A)   // Ultra-high contrast readable typography
-```
+1. Open the app
+2. On Login screen, tap **"Try demo mode →"**
+3. You're in — full app with Chanakya Classes data
+
+**Demo account:**
+| Field | Value |
+|-------|-------|
+| Student | Mohit Raj |
+| Institute | Chanakya Classes |
+| Grade | Class 10 – Section A |
+| Roll No | 27 |
+| Next Class | Creative Sketching – Room 4B, 5:00 PM |
 
 ---
 
-## 🗺️ Roadmap & Upcoming Integrations
+## 🔌 Firebase Cloud Functions
 
-- [ ] **Real-time WhatsApp Notification Bridge**: Direct alerts to parents when homework is assigned or overdue.
-- [ ] **Offline-First SQLite/Room Caching**: Full offline access to notes and worksheets with background sync.
-- [ ] **In-App PDF Reader**: Native document viewer without requiring third-party PDF apps.
-- [ ] **UPI & Razorpay Fee Gateway**: Instant, one-tap tuition fee settlement with digital receipts.
-- [ ] **Voice Homework Reader**: Audio playback of instructions for younger students.
+All backend logic runs in **asia-south1** region:
+
+| Function | Description |
+|----------|-------------|
+| `onUserLogin` | Auto-provisions user doc on first login |
+| `getHomeData` | Aggregates schedule + homework + fee for home screen |
+| `getClassDetail` | Single class session details |
+| `getHomeworkList` | Subject-filtered homework with submission status |
+| `markHomeworkComplete` | Marks homework done + syncs to Firestore |
+| `getSubjects` | Student's enrolled subjects |
+| `getCalendarData` | Monthly session calendar |
+| `getProfileData` | Profile + attendance + fee summary |
+| `createRazorpayOrder` | Creates payment order via Razorpay API |
+| `verifyRazorpayPayment` | Verifies payment signature + updates fee status |
+| `sendNotification` | FCM push notifications |
+
+---
+
+## 🛡️ Firestore Security Rules
+
+Role-based access control across all collections:
+- **Students** — read own data only
+- **Parents** — read their children's data
+- **Authenticated** — read institute/announcements
+- **Admin** — full read/write (via custom claims)
+
+---
+
+## 📦 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Language | Kotlin 2.0 |
+| UI | Jetpack Compose + Material 3 |
+| Architecture | MVVM + Clean Architecture |
+| Auth | Firebase Authentication (Phone OTP, Google, Anonymous) |
+| Database | Cloud Firestore (offline persistence) |
+| Backend | Firebase Cloud Functions (TypeScript, Node 20) |
+| Payments | Razorpay (via Cloud Functions) |
+| Push | Firebase Cloud Messaging (FCM) |
+| Storage | Firebase Storage |
+| Fonts | Poppins (Google Fonts) |
+| Animations | Compose Spring Animations (claymorphic) |
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Claymorphic Login with Phone OTP + Demo Mode  
+- [x] Home Screen — Next Class Card + Timeline + Shortcuts  
+- [x] Homework Tracker with completion sync  
+- [x] Firebase backend with Firestore repositories  
+- [x] Fee Status BottomSheet + Razorpay integration  
+- [x] Offline-first with Firestore persistence  
+- [ ] Parent view (see child's progress)  
+- [ ] Push notifications for class reminders  
+- [ ] Notes/PDF viewer per subject  
+- [ ] Biometric login  
+- [ ] Release on Play Store  
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are what make the open-source community an incredible place to learn, inspire, and create. Any contributions you make are **greatly appreciated**!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+1. Fork the repo
+2. Create your feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feat/amazing-feature`)
 5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
 
 ---
 
-## 👨‍💻 Author & Maintainer
-
-**Mohit Raj**
-* GitHub: [@mohitraj8503](https://github.com/mohitraj8503)
-* Repository: [https://github.com/mohitraj8503/MyTuition](https://github.com/mohitraj8503/MyTuition)
-
 <div align="center">
-  <sub>Made with ❤️ for students, teachers, and parents everywhere.</sub>
+
+Made with ❤️ by [Mohit Raj](https://github.com/mohitraj8503)
+
+**MyTuition** — *Helping students stay on top of their offline coaching journey.*
+
 </div>

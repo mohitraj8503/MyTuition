@@ -49,3 +49,15 @@ captures/
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# Agent config files (IDE tooling)
+.agent/
+.agents/
+.gemini/
+
+# Firebase functions build output
+functions/lib/
+functions/node_modules/
+
+# Built APKs (tracked separately via releases)
+*.apk

@@ -1,38 +1,56 @@
 package com.example.mytuition.feature.subjects
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mytuition.core.designsystem.ClayZeroState
+import com.example.mytuition.core.designsystem.MyTuitionAnimations
 import com.example.mytuition.core.designsystem.MyTuitionColors
+import com.example.mytuition.core.designsystem.MyTuitionShapes
+import com.example.mytuition.core.designsystem.MyTuitionSpacing
 import com.example.mytuition.core.designsystem.MyTuitionTypography
+import com.example.mytuition.core.designsystem.PastelBackground
+import com.example.mytuition.core.designsystem.components.HomeworkItemCard
+import com.example.mytuition.core.designsystem.components.LessonRow
+import com.example.mytuition.core.designsystem.darken
 import com.example.mytuition.core.di.AppContainer
 import com.example.mytuition.core.domain.model.Homework
+import com.example.mytuition.core.domain.model.HomeworkStatus
 import com.example.mytuition.core.domain.model.Resource
 import com.example.mytuition.core.domain.model.SubjectDetail
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubjectDetailScreen(
     subjectId: String,
@@ -42,56 +60,32 @@ fun SubjectDetailScreen(
         factory = SubjectDetailViewModel.provideFactory(subjectId, AppContainer.getSubjectDetailUseCase)
     )
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { },
-                navigationIcon = {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 16.dp, top = 8.dp)
-                            .size(40.dp)
-                            .shadow(4.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.05f))
-                            .background(Color.White, CircleShape)
-                            .clickable(onClick = onNavigateBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack, 
-                            contentDescription = "Back",
-                            tint = MyTuitionColors.DeepNavyText
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MyTuitionColors.WarmIvory
-                )
-            )
-        },
-        containerColor = MyTuitionColors.WarmIvory
-    ) { padding ->
+    PastelBackground(modifier = Modifier.fillMaxSize()) {
         when (val uiState = state) {
             is SubjectDetailUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MyTuitionColors.PremiumPurple)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        color = MyTuitionColors.PrimaryPurple,
+                        modifier = Modifier.size(36.dp)
+                    )
                 }
             }
             is SubjectDetailUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.message, color = MyTuitionColors.PremiumCoral)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = uiState.message, color = MyTuitionColors.StatusRed)
                 }
             }
             is SubjectDetailUiState.NotFound -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text(text = "Subject not found.", color = MyTuitionColors.DeepNavyText)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "Subject not found", color = MyTuitionColors.TextSecondary)
                 }
             }
             is SubjectDetailUiState.Success -> {
                 SubjectDetailContent(
                     detail = uiState.detail,
-                    modifier = Modifier.padding(padding),
+                    onNavigateBack = onNavigateBack,
                     onNavigateToHomeworkDetail = onNavigateToHomeworkDetail
                 )
             }
@@ -102,168 +96,370 @@ fun SubjectDetailScreen(
 @Composable
 private fun SubjectDetailContent(
     detail: SubjectDetail,
-    modifier: Modifier = Modifier,
-    onNavigateToHomeworkDetail: (String) -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToHomeworkDetail: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy · hh:mm a", Locale.getDefault())
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Lessons", "Resources", "Homework")
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 64.dp)
-    ) {
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-            ) {
+    Column(modifier = modifier.fillMaxSize()) {
+        // Gradient purple header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MyTuitionColors.PrimaryPurpleDark,
+                            MyTuitionColors.PrimaryPurple
+                        )
+                    ),
+                    shape = RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp)
+                )
+                .statusBarsPadding()
+                .padding(horizontal = MyTuitionSpacing.lg, vertical = MyTuitionSpacing.md)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Circular clay back button (48dp)
+                val backSource = remember { MutableInteractionSource() }
+                val isBackPressed by backSource.collectIsPressedAsState()
+                val backScale by animateFloatAsState(
+                    targetValue = if (isBackPressed) 0.94f else 1f,
+                    animationSpec = MyTuitionAnimations.claySpring,
+                    label = "backScale"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .scale(backScale)
+                        .shadow(
+                            elevation = if (isBackPressed) 2.dp else 6.dp,
+                            shape = CircleShape,
+                            spotColor = Color(0x30000000)
+                        )
+                        .clip(CircleShape)
+                        .background(MyTuitionColors.CardWhite)
+                        .border(2.dp, MyTuitionColors.CardWhite.darken(0.08f), CircleShape)
+                        .clickable(
+                            interactionSource = backSource,
+                            indication = null,
+                            onClick = onNavigateBack
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MyTuitionColors.PrimaryPurple,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Subject name
                 Text(
                     text = detail.subject.name,
-                    style = MyTuitionTypography.Display.copy(fontSize = 36.sp),
-                    color = MyTuitionColors.DeepNavyText
+                    style = MyTuitionTypography.HeadlineLarge.copy(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Teacher name
+                Text(
+                    text = "By ${detail.subject.teacherName}",
+                    style = MyTuitionTypography.BodyLarge.copy(
+                        fontSize = 17.sp,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Progress Bar (10dp tall)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(Color.White.copy(alpha = 0.25f))
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
-                            .background(MyTuitionColors.PremiumBlue.copy(alpha = 0.2f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            detail.subject.teacherName.take(1),
-                            style = MyTuitionTypography.SectionTitle,
-                            color = MyTuitionColors.PremiumBlue
+                            .fillMaxWidth(0.68f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(Color.White)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "68% Complete • 18/26 Lessons",
+                    style = MyTuitionTypography.LabelMedium.copy(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = 0.95f)
+                    )
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Clay Tab row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = MyTuitionSpacing.lg)
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            tabs.forEachIndexed { index, tabName ->
+                val isSelected = index == selectedTab
+                val tabSource = remember { MutableInteractionSource() }
+                val isTabPressed by tabSource.collectIsPressedAsState()
+
+                val tabScale by animateFloatAsState(
+                    targetValue = if (isTabPressed) 0.94f else if (isSelected) 1.02f else 1f,
+                    animationSpec = MyTuitionAnimations.bounceSpring,
+                    label = "tabScale"
+                )
+                val tabElevation by animateDpAsState(
+                    targetValue = if (isTabPressed) 2.dp else if (isSelected) 6.dp else 3.dp,
+                    animationSpec = MyTuitionAnimations.claySpringDp,
+                    label = "tabElevation"
+                )
+
+                val bgColor = if (isSelected) MyTuitionColors.PrimaryPurple else MyTuitionColors.CardWhite
+                val borderColor = if (isSelected) MyTuitionColors.PrimaryPurpleDark else MyTuitionColors.CardWhite.darken(0.08f)
+                val textColor = if (isSelected) MyTuitionColors.TextOnPurple else MyTuitionColors.TextSecondary
+
+                Box(
+                    modifier = Modifier
+                        .scale(tabScale)
+                        .shadow(
+                            elevation = tabElevation,
+                            shape = MyTuitionShapes.PillShape,
+                            spotColor = if (isSelected) MyTuitionColors.PrimaryPurple.copy(alpha = 0.35f) else Color(0x18000000)
                         )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
+                        .clip(MyTuitionShapes.PillShape)
+                        .background(bgColor, MyTuitionShapes.PillShape)
+                        .border(2.dp, borderColor, MyTuitionShapes.PillShape)
+                        .clickable(
+                            interactionSource = tabSource,
+                            indication = null,
+                            onClick = { selectedTab = index }
+                        )
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = detail.subject.teacherName,
-                        style = MyTuitionTypography.Body,
-                        color = MyTuitionColors.DeepNavyText.copy(alpha = 0.7f)
+                        text = tabName,
+                        style = MyTuitionTypography.LabelLarge.copy(
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = textColor
+                        )
                     )
                 }
             }
         }
-        
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.05f))
-                    .background(Color.White, RoundedCornerShape(24.dp))
-                    .padding(24.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Content based on tab
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = MyTuitionSpacing.lg)
+        ) {
+            when (selectedTab) {
+                0 -> LessonsTabContent(detail = detail)
+                1 -> ResourcesTabContent(resources = detail.recentResources)
+                2 -> HomeworkTabContent(
+                    homeworkList = detail.recentHomework,
+                    onNavigateToHomeworkDetail = onNavigateToHomeworkDetail
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LessonsTabContent(
+    detail: SubjectDetail,
+    modifier: Modifier = Modifier
+) {
+    val sampleLessons = listOf(
+        Triple("Fundamentals & Overview", "45 min", Icons.Rounded.PlayCircle),
+        Triple("Core Formulas and Application", "50 min", Icons.Rounded.Description),
+        Triple("Problem Solving Workshop", "60 min", Icons.Rounded.TrackChanges),
+        Triple("Revision & Advanced Q&A", "40 min", Icons.Rounded.PlayCircle)
+    )
+
+    val cardShape = RoundedCornerShape(28.dp)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = cardShape,
+                ambientColor = Color(0x221A1A1A),
+                spotColor = Color(0x181A1A1A)
+            )
+            .clip(cardShape)
+            .background(MyTuitionColors.CardWhite)
+            .border(2.dp, MyTuitionColors.CardWhite.darken(0.08f), cardShape)
+            .padding(horizontal = 18.dp, vertical = 6.dp)
+    ) {
+        LazyColumn {
+            items(sampleLessons) { (title, duration, resourceIcon) ->
+                LessonRow(
+                    icon = Icons.Rounded.MenuBook,
+                    iconColor = MyTuitionColors.PrimaryPurple,
+                    subjectName = title,
+                    duration = duration,
+                    resourceType = "Module",
+                    resourceIcon = resourceIcon,
+                    onClick = {}
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResourcesTabContent(
+    resources: List<Resource>,
+    modifier: Modifier = Modifier
+) {
+    if (resources.isEmpty()) {
+        ClayZeroState(
+            title = "No Resources Yet 📁",
+            subtitle = "Study materials and downloads will appear here.",
+            modifier = modifier.fillMaxSize()
+        )
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(resources) { resource ->
+                val resShape = RoundedCornerShape(24.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 6.dp,
+                            shape = resShape,
+                            ambientColor = Color(0x1A1A1A1A),
+                            spotColor = Color(0x141A1A1A)
+                        )
+                        .clip(resShape)
+                        .background(MyTuitionColors.CardWhite)
+                        .border(2.dp, MyTuitionColors.CardWhite.darken(0.08f), resShape)
+                        .padding(18.dp)
                 ) {
-                    Column {
-                        Text("Next class", style = MyTuitionTypography.Metadata, color = MyTuitionColors.DeepNavyText.copy(alpha = 0.5f))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        val timeStr = detail.subject.nextClass?.let { dateFormat.format(Date(it)) } ?: "Not scheduled"
-                        Text(timeStr, style = MyTuitionTypography.SectionTitle, color = MyTuitionColors.DeepNavyText)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Pending HW", style = MyTuitionTypography.Metadata, color = MyTuitionColors.DeepNavyText.copy(alpha = 0.5f))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(detail.subject.homeworkCount.toString(), style = MyTuitionTypography.SectionTitle, color = MyTuitionColors.DeepNavyText)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .shadow(4.dp, RoundedCornerShape(16.dp), spotColor = MyTuitionColors.PrimaryPurple.copy(alpha = 0.25f))
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MyTuitionColors.PrimaryPurpleLight)
+                                .border(1.5.dp, MyTuitionColors.PrimaryPurpleLight.darken(0.08f), RoundedCornerShape(16.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Description,
+                                contentDescription = null,
+                                tint = MyTuitionColors.PrimaryPurple,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = resource.title,
+                                style = MyTuitionTypography.TitleMedium.copy(
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MyTuitionColors.TextPrimary
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            if (resource.sizeBytes != null) {
+                                Text(
+                                    text = "${resource.sizeBytes / 1024} KB • Download",
+                                    style = MyTuitionTypography.LabelMedium.copy(
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MyTuitionColors.PrimaryPurple
+                                    )
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Rounded.Download,
+                            contentDescription = "Download",
+                            tint = MyTuitionColors.TextSecondary,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
         }
-        
-        if (detail.recentHomework.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Homework",
-                    style = MyTuitionTypography.LargeTitle,
-                    color = MyTuitionColors.DeepNavyText,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-            }
-            items(detail.recentHomework) { homework ->
-                ClayHomeworkItem(homework, onClick = { onNavigateToHomeworkDetail(homework.id) })
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
-        
-        if (detail.recentResources.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Resources",
-                    style = MyTuitionTypography.LargeTitle,
-                    color = MyTuitionColors.DeepNavyText,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-            }
-            items(detail.recentResources) { resource ->
-                ClayResourceItem(resource)
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
     }
 }
 
 @Composable
-private fun ClayHomeworkItem(homework: Homework, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
-            .background(Color.White, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(20.dp)
-    ) {
-        Column {
-            Text(
-                text = homework.title,
-                style = MyTuitionTypography.SectionTitle,
-                color = MyTuitionColors.DeepNavyText
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Status: ${homework.status.name}",
-                style = MyTuitionTypography.Metadata,
-                color = MyTuitionColors.DeepNavyText.copy(alpha = 0.6f)
-            )
-        }
-    }
-}
+private fun HomeworkTabContent(
+    homeworkList: List<Homework>,
+    onNavigateToHomeworkDetail: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (homeworkList.isEmpty()) {
+        ClayZeroState(
+            title = "No Homework Pending 🎉",
+            subtitle = "You are all caught up for this subject!",
+            modifier = modifier.fillMaxSize()
+        )
+    } else {
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(homeworkList) { homework ->
+                val sdf = SimpleDateFormat("dd MMM", Locale.getDefault())
+                val dueText = homework.dueAt?.let { "Due ${sdf.format(Date(it))}" } ?: "No deadline"
 
-@Composable
-private fun ClayResourceItem(resource: Resource) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
-            .background(Color.White, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
-            .clickable { /* TODO */ }
-            .padding(16.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(MyTuitionColors.PremiumPurple.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = resource.type.name.take(3), style = MyTuitionTypography.Caption, color = MyTuitionColors.PremiumPurple)
+                HomeworkItemCard(
+                    subjectTag = homework.subjectName,
+                    subjectColor = MyTuitionColors.PrimaryPurple,
+                    title = homework.title,
+                    dueText = dueText,
+                    isOverdue = homework.status == HomeworkStatus.OVERDUE,
+                    isCompleted = homework.status == HomeworkStatus.COMPLETED,
+                    hasAttachment = homework.attachments.isNotEmpty(),
+                    onToggleComplete = {},
+                    onClick = { onNavigateToHomeworkDetail(homework.id) }
+                )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = resource.title,
-                style = MyTuitionTypography.Body.copy(fontWeight = FontWeight.Bold),
-                color = MyTuitionColors.DeepNavyText
-            )
         }
     }
 }

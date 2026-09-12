@@ -1,15 +1,13 @@
 package com.example.mytuition.feature.homework
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +17,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mytuition.core.designsystem.MyTuitionColors
 import com.example.mytuition.core.designsystem.MyTuitionSpacing
 import com.example.mytuition.core.designsystem.MyTuitionTypography
+import com.example.mytuition.core.designsystem.PastelBackground
+import com.example.mytuition.core.designsystem.darken
+import com.example.mytuition.core.designsystem.components.FilterChipRow
+import com.example.mytuition.core.designsystem.components.HomeworkItemCard
+import com.example.mytuition.core.designsystem.components.ProgressRing
 import com.example.mytuition.core.di.AppContainer
 import com.example.mytuition.core.domain.model.Homework
 import com.example.mytuition.core.domain.model.HomeworkStatus
@@ -37,62 +41,174 @@ fun HomeworkScreen(
         factory = HomeworkViewModel.provideFactory(AppContainer.getHomeworkListUseCase)
     )
 ) {
-    val state by viewModel.uiState.collectAsState()
-    val currentFilter by viewModel.currentFilter.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentFilter by viewModel.currentFilter.collectAsStateWithLifecycle()
+    val allHomeworkList by viewModel.allHomework.collectAsStateWithLifecycle()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MyTuitionColors.WarmIvory)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
-            Text(
-                text = "Homework",
-                style = MyTuitionTypography.Display,
-                color = MyTuitionColors.DeepNavyText
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Stay on top of your work.",
-                style = MyTuitionTypography.Body,
-                color = MyTuitionColors.DeepNavyText.copy(alpha = 0.5f)
-            )
-        }
-        
-        FilterRow(
-            currentFilter = currentFilter,
-            onFilterSelected = viewModel::setFilter
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
+    val totalCount = allHomeworkList.size
+    val pendingCount = allHomeworkList.count { it.status == com.example.mytuition.core.domain.model.HomeworkStatus.PENDING }
+    val completedCount = allHomeworkList.count { it.status == com.example.mytuition.core.domain.model.HomeworkStatus.COMPLETED }
+    val overdueCount = allHomeworkList.count { it.status == com.example.mytuition.core.domain.model.HomeworkStatus.OVERDUE }
 
-        when (val uiState = state) {
-            is HomeworkUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = MyTuitionColors.PremiumPurple)
-                }
+    val filterLabels = listOf(
+        "All ($totalCount)",
+        "Pending ($pendingCount)",
+        "Completed ($completedCount)",
+        "Overdue ($overdueCount)"
+    )
+
+    val activeIndex = when (currentFilter) {
+        HomeworkFilter.ALL -> 0
+        HomeworkFilter.PENDING -> 1
+        HomeworkFilter.COMPLETED -> 2
+        HomeworkFilter.OVERDUE -> 3
+    }
+
+    PastelBackground(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            // Header: "Homework" (32sp Bold) + "Weekly Overview" (15sp Regular)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MyTuitionSpacing.lg, vertical = MyTuitionSpacing.md)
+            ) {
+                Text(
+                    text = "Homework",
+                    style = MyTuitionTypography.HeadlineLarge.copy(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MyTuitionColors.TextPrimary
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Weekly Overview",
+                    style = MyTuitionTypography.BodyMedium.copy(
+                        fontSize = 15.sp,
+                        color = MyTuitionColors.TextSecondary
+                    )
+                )
             }
-            is HomeworkUiState.Empty -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.message, color = MyTuitionColors.DeepNavyText.copy(alpha = 0.5f))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = MyTuitionSpacing.lg,
+                    end = MyTuitionSpacing.lg,
+                    bottom = 110.dp // clear floating nav bar
+                ),
+                verticalArrangement = Arrangement.spacedBy(MyTuitionSpacing.md)
+            ) {
+                // Overview Card
+                item {
+                    OverviewCard(
+                        completed = completedCount,
+                        total = totalCount,
+                        pending = pendingCount,
+                        overdue = overdueCount
+                    )
                 }
-            }
-            is HomeworkUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.message, color = MyTuitionColors.PremiumCoral)
+
+                // Filter Row
+                item {
+                    FilterChipRow(
+                        filters = filterLabels,
+                        activeIndex = activeIndex,
+                        onFilterSelect = { idx ->
+                            when (idx) {
+                                0 -> viewModel.setFilter(HomeworkFilter.ALL)
+                                1 -> viewModel.setFilter(HomeworkFilter.PENDING)
+                                2 -> viewModel.setFilter(HomeworkFilter.COMPLETED)
+                                3 -> viewModel.setFilter(HomeworkFilter.OVERDUE)
+                            }
+                        },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
                 }
-            }
-            is HomeworkUiState.Success -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = MyTuitionSpacing.BottomNavPadding),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(uiState.homeworkList) { homework ->
-                        HomeworkItem(
-                            homework = homework,
-                            onClick = { onNavigateToDetail(homework.id) }
-                        )
+
+                // Homework list items
+                when (val uiState = state) {
+                    is HomeworkUiState.Loading -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = MyTuitionColors.PrimaryPurple,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        }
+                    }
+                    is HomeworkUiState.Empty -> {
+                        item {
+                            com.example.mytuition.core.designsystem.ClayZeroState(
+                                title = "All Clear! 🎉",
+                                subtitle = uiState.message,
+                                modifier = Modifier.padding(vertical = 24.dp)
+                            )
+                        }
+                    }
+                    is HomeworkUiState.Error -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = uiState.message,
+                                    color = MyTuitionColors.StatusRed
+                                )
+                            }
+                        }
+                    }
+                    is HomeworkUiState.Success -> {
+                        items(
+                            items = uiState.homeworkList,
+                            key = { it.id }
+                        ) { homework ->
+                            val subjectColor = when {
+                                homework.subjectName.contains("Math", ignoreCase = true) -> MyTuitionColors.SubjectMath
+                                homework.subjectName.contains("Physic", ignoreCase = true) -> MyTuitionColors.SubjectPhysics
+                                homework.subjectName.contains("Chem", ignoreCase = true) -> MyTuitionColors.SubjectChemistry
+                                homework.subjectName.contains("Hist", ignoreCase = true) -> MyTuitionColors.SubjectHistory
+                                homework.subjectName.contains("Geo", ignoreCase = true) -> MyTuitionColors.SubjectGeometry
+                                else -> MyTuitionColors.SubjectBio
+                            }
+
+                            val isCompleted = homework.status == HomeworkStatus.COMPLETED
+                            val isOverdue = homework.status == HomeworkStatus.OVERDUE
+
+                            val dueText = if (homework.dueAt != null) {
+                                val sdf = SimpleDateFormat("dd MMM, h:mm a", Locale.getDefault())
+                                "Due ${sdf.format(Date(homework.dueAt))}"
+                            } else {
+                                "No due date"
+                            }
+
+                            HomeworkItemCard(
+                                subjectTag = homework.subjectName,
+                                subjectColor = subjectColor,
+                                title = homework.title,
+                                dueText = dueText,
+                                isOverdue = isOverdue,
+                                isCompleted = isCompleted,
+                                hasAttachment = homework.attachments.isNotEmpty(),
+                                onToggleComplete = {
+                                    viewModel.toggleHomeworkComplete(homework.id)
+                                },
+                                onClick = { onNavigateToDetail(homework.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -101,132 +217,99 @@ fun HomeworkScreen(
 }
 
 @Composable
-private fun FilterRow(
-    currentFilter: HomeworkFilter,
-    onFilterSelected: (HomeworkFilter) -> Unit
+private fun OverviewCard(
+    completed: Int,
+    total: Int,
+    pending: Int,
+    overdue: Int,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .shadow(4.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.05f))
-            .background(Color.White, RoundedCornerShape(24.dp))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        HomeworkFilter.values().forEach { filter ->
-            val isSelected = currentFilter == filter
-            val bgColor by animateColorAsState(targetValue = if (isSelected) MyTuitionColors.PremiumPurple.copy(alpha = 0.15f) else Color.Transparent)
-            val textColor by animateColorAsState(targetValue = if (isSelected) MyTuitionColors.PremiumPurple else MyTuitionColors.DeepNavyText.copy(alpha = 0.6f))
-            
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(bgColor)
-                    .clickable { onFilterSelected(filter) }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = filter.name.lowercase().replaceFirstChar { it.uppercase() },
-                    style = MyTuitionTypography.Body.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium),
-                    color = textColor
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeworkItem(
-    homework: Homework,
-    onClick: () -> Unit
-) {
-    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-    
+    val cardShape = RoundedCornerShape(32.dp)
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.04f), ambientColor = Color.Transparent)
-            .background(Color.White, RoundedCornerShape(24.dp))
-            .clip(RoundedCornerShape(24.dp))
-            .clickable(onClick = onClick)
-            .padding(20.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = homework.subjectName,
-                    style = MyTuitionTypography.Caption,
-                    color = MyTuitionColors.PremiumPurple
-                )
-                
-                StatusBadge(status = homework.status)
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Text(
-                text = homework.title,
-                style = MyTuitionTypography.LargeTitle.copy(fontSize = 18.sp),
-                color = MyTuitionColors.DeepNavyText
+            .shadow(
+                elevation = 12.dp,
+                shape = cardShape,
+                ambientColor = Color(0x331A1A1A),
+                spotColor = Color(0x221A1A1A)
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            .clip(cardShape)
+            .background(MyTuitionColors.CardWhite)
+            .border(2.dp, MyTuitionColors.CardWhite.darken(0.08f), cardShape)
+    ) {
+        // Inner bottom shadow
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(16.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.04f))
+                    )
+                )
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(22.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Left: ProgressRing
+            ProgressRing(
+                completed = completed,
+                total = total,
+                modifier = Modifier.size(120.dp)
+            )
+
+            Spacer(modifier = Modifier.width(18.dp))
+
+            // Right: Column of stats
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "By ${homework.teacherName}",
-                    style = MyTuitionTypography.Metadata,
-                    color = MyTuitionColors.DeepNavyText.copy(alpha = 0.5f)
+                    text = "Tasks this week",
+                    style = MyTuitionTypography.BodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MyTuitionColors.TextSecondary
+                    )
                 )
-                
-                if (homework.dueAt != null) {
+
+                Text(
+                    text = "$pending Pending",
+                    style = MyTuitionTypography.TitleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MyTuitionColors.PrimaryPurple
+                    )
+                )
+
+                Text(
+                    text = "$completed Completed",
+                    style = MyTuitionTypography.TitleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MyTuitionColors.OnlineGreen
+                    )
+                )
+
+                if (overdue > 0) {
                     Text(
-                        text = "Due: ${dateFormat.format(Date(homework.dueAt))}",
-                        style = MyTuitionTypography.Metadata.copy(fontWeight = FontWeight.Bold),
-                        color = MyTuitionColors.DeepNavyText.copy(alpha = 0.7f)
+                        text = "$overdue Overdue",
+                        style = MyTuitionTypography.TitleMedium.copy(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MyTuitionColors.StatusRed
+                        )
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun StatusBadge(status: HomeworkStatus) {
-    val containerColor = when (status) {
-        HomeworkStatus.PENDING -> MyTuitionColors.PremiumLime.copy(alpha = 0.2f)
-        HomeworkStatus.COMPLETED -> MyTuitionColors.PremiumBlue.copy(alpha = 0.2f)
-        HomeworkStatus.SUBMITTED -> MyTuitionColors.PremiumLavender.copy(alpha = 0.2f)
-        HomeworkStatus.OVERDUE -> MyTuitionColors.PremiumCoral.copy(alpha = 0.2f)
-    }
-    
-    val contentColor = when (status) {
-        HomeworkStatus.PENDING -> MyTuitionColors.DeepNavyText
-        HomeworkStatus.COMPLETED -> MyTuitionColors.DeepNavyText
-        HomeworkStatus.SUBMITTED -> MyTuitionColors.DeepNavyText
-        HomeworkStatus.OVERDUE -> MyTuitionColors.PremiumCoral
-    }
-
-    Box(
-        modifier = Modifier
-            .background(containerColor, RoundedCornerShape(8.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = status.name,
-            style = MyTuitionTypography.Caption,
-            color = contentColor
-        )
     }
 }

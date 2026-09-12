@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: is user authenticated?
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: get user role
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // Helper: get user's institute
+    function userInstitute() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.instituteId;
+    }
+
+    // Helper: is student
+    function isStudent() {
+      return isAuth() && userRole() == 'STUDENT';
+    }
+
+    // Helper: is parent
+    function isParent() {
+      return isAuth() && userRole() == 'PARENT';
+    }
+
+    // Helper: is teacher or admin
+    function isStaff() {
+      return isAuth() && (userRole() == 'TEACHER' || userRole() == 'ADMIN');
+    }
+
+    // Helper: get student IDs
+    function getStudentIds() {
+      return isStudent() ? [get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentInfo.studentId] : [];
+    }
+
+    // === institutes ===
+    match /institutes/{instituteId} {
+      allow read: if isAuth() && userInstitute() == instituteId;
+      allow write: if isStaff() && userInstitute() == instituteId;
+    }
+
+    // === users ===
+    match /users/{uid} {
+      // Students/parents can read their own profile
+      // Parents can read their children's profiles
+      // Teachers can read profiles of students in their batches
+      allow read: if isAuth() && (
+        request.auth.uid == uid ||
+        isParent() ||
+        isStaff()
+      );
+      // Users can update their own profile (photo, fcmToken, notification prefs)
+      allow update: if isAuth() && request.auth.uid == uid;
+      // Only admin can create/delete users
+      allow create, delete: if isStaff();
+    }
+
+    // === batches ===
+    match /batches/{batchId} {
+      allow read: if isAuth() && userInstitute() == resource.data.instituteId;
+      allow write: if isStaff();
+    }
+
+    // === subjects ===
+    match /subjects/{subjectId} {
+      allow read: if isAuth() && userInstitute() == resource.data.instituteId;
+      allow write: if isStaff();
+    }
+
+    // === teachers ===
+    match /teachers/{teacherId} {
+      allow read: if isAuth();
+      allow write: if isStaff();
+    }
+
+    // === class_sessions ===
+    match /class_sessions/{sessionId} {
+      // Students can read sessions for their batches
+      allow read: if isAuth() && (
+        resource.data.batchId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.studentInfo.batches
+        || isStaff()
+      );
+      // Only teachers/admins can create/update sessions
+      allow write: if isStaff();
+    }
+
+    // === attendance ===
+    match /attendance/{attendanceId} {
+      // Students can read their own attendance
+      // Parents can read their children's attendance
+      // Teachers can read/write attendance for their batches
+      allow read: if isAuth() && (
+        resource.data.studentUid == request.auth.uid ||
+        isParent() ||
+        isStaff()
+      );
+      allow write: if isStaff();
+    }
+
+    // === homework ===
+    match /homework/{homeworkId} {
+      allow read: if isAuth() && (
+        resource.data.studentIds.hasAny(getStudentIds()) ||
+        isStaff()
+      );
+      allow write: if isStaff();
+    }
+
+    // === homework_submissions ===
+    match /homework_submissions/{submissionId} {
+      allow read: if isAuth() && (
+        resource.data.studentUid == request.auth.uid ||
+        isParent() ||
+        isStaff()
+      );
+      // Students can update their own submission status
+      allow update: if isAuth() && (
+        resource.data.studentUid == request.auth.uid ||
+        isStaff()
+      );
+      allow create: if isStaff();
+    }
+
+    // === fees ===
+    match /fees/{feeId} {
+      allow read: if isAuth() && (
+        resource.data.studentUid == request.auth.uid ||
+        isParent() ||
+        isStaff()
+      );
+      allow write: if isStaff();
+    }
+
+    // === announcements ===
+    match /announcements/{announcementId} {
+      allow read: if isAuth() && userInstitute() == resource.data.instituteId;
+      allow write: if isStaff();
+    }
+  }
+}

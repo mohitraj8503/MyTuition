@@ -1,35 +1,54 @@
 package com.example.mytuition.feature.auth
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mytuition.core.designsystem.MyTuitionAnimations
 import com.example.mytuition.core.designsystem.MyTuitionColors
 import com.example.mytuition.core.designsystem.MyTuitionTypography
+import com.example.mytuition.core.designsystem.components.MyTuitionLogo
 import com.example.mytuition.core.di.AppContainer
-
-val LimeInput = Color(0xFFA8E600)
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -38,197 +57,506 @@ fun LoginScreen(
         factory = LoginViewModel.provideFactory(AppContainer.authRepository)
     )
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var phoneNumber by remember { mutableStateOf("") }
+    var isPhoneFocused by remember { mutableStateOf(false) }
+    var localErrorMessage by remember { mutableStateOf<String?>(null) }
+    var isSendingOtp by remember { mutableStateOf(false) }
+
+    val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
+    val shakeOffset = remember { Animatable(0f) }
 
     LaunchedEffect(state) {
         if (state is LoginUiState.Success) {
+            isSendingOtp = false
             onLoginSuccess()
             viewModel.resetState()
+        } else if (state is LoginUiState.Error) {
+            isSendingOtp = false
+            coroutineScope.launch {
+                for (i in 0..2) {
+                    shakeOffset.animateTo(12f, tween(50))
+                    shakeOffset.animateTo(-12f, tween(50))
+                }
+                shakeOffset.animateTo(0f, tween(50))
+            }
         }
     }
 
-    // Animation for entrance
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-    
-    val transition = updateTransition(targetState = visible, label = "Entrance")
-    val panelScale by transition.animateFloat(
-        transitionSpec = { spring(dampingRatio = 0.6f, stiffness = 200f) },
-        label = "Panel Scale"
-    ) { if (it) 1f else 0.9f }
-    val panelAlpha by transition.animateFloat(
-        transitionSpec = { tween(400) },
-        label = "Panel Alpha"
-    ) { if (it) 1f else 0f }
+    val isAnyLoading = isSendingOtp || state is LoginUiState.Loading
+
+    // Animated Floating Background Blobs (mint + peach + light blue)
+    val infiniteTransition = rememberInfiniteTransition(label = "blobMotion")
+    val blob1OffsetX by infiniteTransition.animateFloat(
+        initialValue = -35f,
+        targetValue = 35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(8000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "b1X"
+    )
+    val blob1OffsetY by infiniteTransition.animateFloat(
+        initialValue = -25f,
+        targetValue = 25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(6500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "b1Y"
+    )
+    val blob2OffsetX by infiniteTransition.animateFloat(
+        initialValue = 30f,
+        targetValue = -30f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(9000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "b2X"
+    )
+    val blob2OffsetY by infiniteTransition.animateFloat(
+        initialValue = -35f,
+        targetValue = 35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(7500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "b2Y"
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MyTuitionColors.WarmIvory)
+            .background(Color(0xFFF4F6FA))
     ) {
-        // Decorative Elements
-        Box(
-            modifier = Modifier
-                .offset(x = (-40).dp, y = 60.dp)
-                .size(160.dp)
-                .background(MyTuitionColors.PremiumPurple, CircleShape)
-                .graphicsLayer { alpha = 0.6f }
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 60.dp, y = (-20).dp)
-                .size(200.dp)
-                .background(MyTuitionColors.PremiumBlue, CircleShape)
-                .graphicsLayer { alpha = 0.6f }
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = 20.dp, y = 40.dp)
-                .size(120.dp)
-                .background(MyTuitionColors.PremiumCoral, CircleShape)
-                .graphicsLayer { alpha = 0.5f }
-        )
+        // Living animated blobs in the background
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
 
-        // Main Content
-        Column(
+            // Blob 1: Mint Green (Top Left)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFB9F6CA).copy(alpha = 0.40f),
+                        Color(0xFFB9F6CA).copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    center = Offset(w * 0.25f + blob1OffsetX.dp.toPx(), h * 0.18f + blob1OffsetY.dp.toPx()),
+                    radius = w * 0.55f
+                ),
+                radius = w * 0.55f,
+                center = Offset(w * 0.25f + blob1OffsetX.dp.toPx(), h * 0.18f + blob1OffsetY.dp.toPx())
+            )
+
+            // Blob 2: Peach / Soft Coral (Top Right)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFFFD180).copy(alpha = 0.35f),
+                        Color(0xFFFFD180).copy(alpha = 0.05f),
+                        Color.Transparent
+                    ),
+                    center = Offset(w * 0.85f + blob2OffsetX.dp.toPx(), h * 0.12f + blob2OffsetY.dp.toPx()),
+                    radius = w * 0.50f
+                ),
+                radius = w * 0.50f,
+                center = Offset(w * 0.85f + blob2OffsetX.dp.toPx(), h * 0.12f + blob2OffsetY.dp.toPx())
+            )
+
+            // Blob 3: Light Sky Blue (Center / bottom)
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF80D8FF).copy(alpha = 0.25f),
+                        Color.Transparent
+                    ),
+                    center = Offset(w * 0.50f, h * 0.50f),
+                    radius = w * 0.60f
+                ),
+                radius = w * 0.60f,
+                center = Offset(w * 0.50f, h * 0.50f)
+            )
+        }
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
-                .graphicsLayer {
-                    scaleX = panelScale
-                    scaleY = panelScale
-                    alpha = panelAlpha
-                },
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 32.dp,
-                        shape = RoundedCornerShape(40.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.05f),
-                        spotColor = Color.Black.copy(alpha = 0.15f)
-                    )
-                    .background(MyTuitionColors.PremiumLime, RoundedCornerShape(40.dp))
-                    .border(
-                        width = 2.dp,
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.6f), Color.Transparent)
-                        ),
-                        shape = RoundedCornerShape(40.dp)
-                    )
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Bottom
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Mascot Head
-                    MyTuitionMascot(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                    )
-                    
-                    Text(
-                        text = "Ready for focus?",
-                        style = MyTuitionTypography.Display.copy(
-                            fontSize = 32.sp
-                        ),
-                        color = MyTuitionColors.DeepNavyText
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = "Everything you need for tuition,\nall in one place.",
-                        style = MyTuitionTypography.Body.copy(
-                            fontSize = 16.sp,
-                            lineHeight = 22.sp
-                        ),
-                        color = MyTuitionColors.DeepNavyText.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
+                // Top area: 28% height for breathing room and overlapping mascot logo
+                Spacer(modifier = Modifier.weight(0.28f))
 
-                    if (state is LoginUiState.Error) {
-                        Text(
-                            text = (state as LoginUiState.Error).message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
-                        )
+                // Bottom 72%: White Clay Card
+                Box(
+                    modifier = Modifier
+                        .weight(0.72f)
+                        .fillMaxWidth()
+                ) {
+                    // Card Surface
+                    val cardShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .shadow(
+                                elevation = 16.dp,
+                                shape = cardShape,
+                                ambientColor = Color(0x221A1A1A),
+                                spotColor = Color(0x181A1A1A)
+                            )
+                            .clip(cardShape)
+                            .background(Color.White)
+                            .border(2.dp, Color(0xFFEFE9FF), cardShape)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 26.dp)
+                                .padding(top = 58.dp, bottom = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Welcome Text (inside card)
+                            Text(
+                                text = "Welcome Back!",
+                                style = MyTuitionTypography.HeadlineLarge.copy(
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF221A44)
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Sign in to continue your learning journey",
+                                style = MyTuitionTypography.BodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    color = Color(0xFF6E6A8F)
+                                ),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // PRIMARY FLOW: Phone Input Field (Clay Inset) with shake animation
+                            val phoneCorner = RoundedCornerShape(20.dp)
+                            val phoneBg = if (isPhoneFocused) Color(0xFFF5F2FF) else Color(0xFFF1F0F5)
+                            val phoneBorder = if (isPhoneFocused) MyTuitionColors.PrimaryPurple else Color(0xFFE8E6F0)
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .offset(x = shakeOffset.value.dp)
+                                    .shadow(
+                                        elevation = if (isPhoneFocused) 8.dp else 0.dp,
+                                        shape = phoneCorner,
+                                        spotColor = MyTuitionColors.PrimaryPurple.copy(alpha = 0.25f),
+                                        ambientColor = Color(0x106C48FF)
+                                    )
+                                    .clip(phoneCorner)
+                                    .background(phoneBg)
+                                    .border(2.dp, phoneBorder, phoneCorner)
+                                    .padding(vertical = 16.dp, horizontal = 18.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Phone,
+                                        contentDescription = "Phone",
+                                        tint = if (isPhoneFocused) MyTuitionColors.PrimaryPurple else MyTuitionColors.TextTertiary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Text(
+                                        text = "+91",
+                                        style = MyTuitionTypography.LabelLarge.copy(
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF221A44)
+                                        )
+                                    )
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        if (phoneNumber.isEmpty()) {
+                                            Text(
+                                                text = "Enter phone number",
+                                                style = MyTuitionTypography.BodyMedium.copy(
+                                                    fontSize = 15.sp,
+                                                    color = MyTuitionColors.TextTertiary
+                                                )
+                                            )
+                                        }
+                                        BasicTextField(
+                                            value = phoneNumber,
+                                            onValueChange = {
+                                                if (it.length <= 10 && it.all { char -> char.isDigit() }) {
+                                                    phoneNumber = it
+                                                    localErrorMessage = null
+                                                }
+                                            },
+                                            enabled = !isAnyLoading,
+                                            singleLine = true,
+                                            textStyle = TextStyle(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF221A44)
+                                            ),
+                                            keyboardOptions = KeyboardOptions(
+                                                keyboardType = KeyboardType.Phone,
+                                                imeAction = ImeAction.Done
+                                            ),
+                                            keyboardActions = KeyboardActions(
+                                                onDone = {
+                                                    focusManager.clearFocus()
+                                                    if (phoneNumber.length >= 10 && !isAnyLoading) {
+                                                        isSendingOtp = true
+                                                        coroutineScope.launch {
+                                                            delay(600)
+                                                            viewModel.enterDemoMode()
+                                                        }
+                                                    }
+                                                }
+                                            ),
+                                            cursorBrush = SolidColor(MyTuitionColors.PrimaryPurple),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .onFocusChanged { isPhoneFocused = it.isFocused }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Error message if any
+                            val displayError = localErrorMessage ?: (state as? LoginUiState.Error)?.message
+                            if (displayError != null) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = displayError,
+                                    color = MyTuitionColors.StatusRed,
+                                    style = MyTuitionTypography.LabelMedium.copy(
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Start
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Send OTP Button: Proper full-width purple clay pill button with loading state
+                            val sendOtpSource = remember { MutableInteractionSource() }
+                            val isSendOtpPressed by sendOtpSource.collectIsPressedAsState()
+                            val sendOtpScale by animateFloatAsState(
+                                targetValue = if (isSendOtpPressed && !isAnyLoading) 0.97f else 1f,
+                                animationSpec = MyTuitionAnimations.claySpring,
+                                label = "sendOtpScale"
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .scale(sendOtpScale)
+                                    .fillMaxWidth()
+                                    .height(52.dp)
+                                    .shadow(
+                                        elevation = if (isSendOtpPressed) 4.dp else 10.dp,
+                                        shape = RoundedCornerShape(28.dp),
+                                        ambientColor = Color(0x336C48FF),
+                                        spotColor = Color(0x226C48FF)
+                                    )
+                                    .clip(RoundedCornerShape(28.dp))
+                                    .background(Color(0xFF6C48FF))
+                                    .border(2.dp, Color(0xFF5538CC), RoundedCornerShape(28.dp))
+                                    .clickable(
+                                        interactionSource = sendOtpSource,
+                                        indication = null,
+                                        enabled = !isAnyLoading,
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            if (phoneNumber.length < 10) {
+                                                localErrorMessage = "Please enter a valid 10-digit phone number"
+                                                coroutineScope.launch {
+                                                    for (i in 0..2) {
+                                                        shakeOffset.animateTo(12f, tween(50))
+                                                        shakeOffset.animateTo(-12f, tween(50))
+                                                    }
+                                                    shakeOffset.animateTo(0f, tween(50))
+                                                }
+                                            } else {
+                                                isSendingOtp = true
+                                                coroutineScope.launch {
+                                                    delay(600)
+                                                    viewModel.enterDemoMode()
+                                                }
+                                            }
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSendingOtp) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Color.White,
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.5.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(
+                                            text = "Sending OTP...",
+                                            style = MyTuitionTypography.LabelLarge.copy(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(
+                                            text = "Send OTP",
+                                            style = MyTuitionTypography.LabelLarge.copy(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            // Divider: thin line + "or continue with" + thin line
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                HorizontalDivider(
+                                    modifier = Modifier.weight(1f),
+                                    color = Color(0xFFECECF0),
+                                    thickness = 1.dp
+                                )
+                                Text(
+                                    text = "or",
+                                    style = MyTuitionTypography.LabelMedium.copy(
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MyTuitionColors.TextTertiary
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.weight(1f),
+                                    color = Color(0xFFECECF0),
+                                    thickness = 1.dp
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            // SECONDARY FLOW: Google Button (Outlined/Secondary Style)
+                            OutlinedGoogleButton(
+                                isLoading = state is LoginUiState.Loading && (state as LoginUiState.Loading).provider == AuthProvider.GOOGLE,
+                                enabled = !isAnyLoading,
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    viewModel.signInWithGoogle()
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Demo Mode Link: "Try demo mode →" (14sp SemiBold, PrimaryPurple, Underline)
+                            Text(
+                                text = "Try demo mode →",
+                                style = MyTuitionTypography.LabelLarge.copy(
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MyTuitionColors.PrimaryPurple,
+                                    textDecoration = TextDecoration.Underline
+                                ),
+                                modifier = Modifier
+                                    .clickable(enabled = !isAnyLoading) {
+                                        focusManager.clearFocus()
+                                        viewModel.enterDemoMode()
+                                    }
+                                    .padding(vertical = 4.dp, horizontal = 8.dp)
+                            )
+
+                            // 16dp spacing between Demo Mode and Sign Up
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Subtle Divider
+                            HorizontalDivider(
+                                modifier = Modifier.width(60.dp),
+                                color = Color(0xFFE8E6F0),
+                                thickness = 1.dp
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Sign Up Link
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "Don't have an account? ",
+                                    style = MyTuitionTypography.BodyMedium.copy(
+                                        fontSize = 15.sp,
+                                        color = Color(0xFF6E6A8F)
+                                    )
+                                )
+                                Text(
+                                    text = "Sign up",
+                                    style = MyTuitionTypography.BodyMedium.copy(
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MyTuitionColors.PrimaryPurple
+                                    ),
+                                    modifier = Modifier
+                                        .clickable(enabled = !isAnyLoading) { }
+                                        .padding(vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
 
-                    // Google Button
-                    val isGoogleLoading = state is LoginUiState.Loading && (state as LoginUiState.Loading).provider == AuthProvider.GOOGLE
-                    MyTuitionAuthButton(
-                        text = if (isGoogleLoading) "Signing in with Google..." else "Continue with Google",
-                        icon = { GoogleIcon() },
-                        onClick = { viewModel.signInWithGoogle() },
-                        isLoading = isGoogleLoading,
-                        enabled = state is LoginUiState.Idle || state is LoginUiState.Error,
-                        containerColor = Color.White,
-                        contentColor = MyTuitionColors.DeepNavyText,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // GitHub Button
-                    val isGithubLoading = state is LoginUiState.Loading && (state as LoginUiState.Loading).provider == AuthProvider.GITHUB
-                    MyTuitionAuthButton(
-                        text = if (isGithubLoading) "Signing in with GitHub..." else "Continue with GitHub",
-                        icon = { GitHubIcon() },
-                        onClick = { viewModel.signInWithGitHub() },
-                        isLoading = isGithubLoading,
-                        enabled = state is LoginUiState.Idle || state is LoginUiState.Error,
-                        containerColor = MyTuitionColors.DeepNavyText,
-                        contentColor = Color.White,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    Text(
-                        text = "OR",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MyTuitionColors.DeepNavyText.copy(alpha = 0.4f)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Demo Button
-                    val isDemoLoading = state is LoginUiState.Loading && (state as LoginUiState.Loading).provider == AuthProvider.DEMO
-                    MyTuitionAuthButton(
-                        text = if (isDemoLoading) "Entering demo..." else "Enter Demo Mode",
-                        icon = null,
-                        onClick = { viewModel.enterDemoMode() },
-                        isLoading = isDemoLoading,
-                        enabled = state is LoginUiState.Idle || state is LoginUiState.Error,
-                        containerColor = LimeInput,
-                        contentColor = MyTuitionColors.DeepNavyText,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-                    
-                    Text(
-                        text = "Need help?",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MyTuitionColors.DeepNavyText.copy(alpha = 0.5f),
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { 
-                            // Hidden demo entry can go here if requested
-                        }
+                    // Mascot Logo: 96dp yellow cartoon mascot, centered, overlapping top card edge by -48dp
+                    MyTuitionLogo(
+                        size = 96.dp,
+                        showClayCard = true,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = (-48).dp)
                     )
                 }
             }
@@ -236,45 +564,39 @@ fun LoginScreen(
     }
 }
 
+/**
+ * Secondary / Outlined Google Button for reduced prominence.
+ */
 @Composable
-fun MyTuitionAuthButton(
-    text: String,
-    icon: @Composable (() -> Unit)?,
-    onClick: () -> Unit,
+private fun OutlinedGoogleButton(
     isLoading: Boolean,
     enabled: Boolean,
-    containerColor: Color,
-    contentColor: Color,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "ButtonScale"
+        targetValue = if (isPressed && enabled) 0.98f else 1f,
+        animationSpec = MyTuitionAnimations.bounceSpring,
+        label = "googleScale"
     )
-    
+
+    val shape = RoundedCornerShape(26.dp)
+
     Box(
-        modifier = modifier
+        modifier = Modifier
             .scale(scale)
             .fillMaxWidth()
-            .height(64.dp)
+            .height(50.dp)
             .shadow(
-                elevation = if (isPressed && enabled) 2.dp else 16.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = MyTuitionColors.DeepNavyText.copy(alpha = 0.4f),
-                ambientColor = MyTuitionColors.DeepNavyText.copy(alpha = 0.2f)
+                elevation = if (isPressed) 1.dp else 3.dp,
+                shape = shape,
+                ambientColor = Color(0x101A1A1A),
+                spotColor = Color(0x0C1A1A1A)
             )
-            .background(containerColor, RoundedCornerShape(24.dp))
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.4f), Color.Transparent)
-                ),
-                shape = RoundedCornerShape(24.dp)
-            )
+            .clip(shape)
+            .background(Color.White)
+            .border(1.5.dp, Color(0xFFD8D4E6), shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -283,38 +605,43 @@ fun MyTuitionAuthButton(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(color = contentColor, modifier = Modifier.size(24.dp), strokeWidth = 3.dp)
-                Spacer(modifier = Modifier.width(12.dp))
-            } else if (icon != null) {
-                icon()
-                Spacer(modifier = Modifier.width(12.dp))
-            }
-            Text(
-                text = text,
-                color = contentColor,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = MyTuitionColors.PrimaryPurple,
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp
             )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                GoogleIconSvg(modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Continue with Google",
+                    style = MyTuitionTypography.LabelLarge.copy(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF524D6E)
+                    )
+                )
+            }
         }
     }
 }
 
 @Composable
-fun GoogleIcon() {
+fun GoogleIconSvg(modifier: Modifier = Modifier) {
     val vector = remember {
-        androidx.compose.ui.graphics.vector.ImageVector.Builder(
-            name = "Google",
+        ImageVector.Builder(
+            name = "GoogleLogo",
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 24f,
             viewportHeight = 24f
         ).apply {
-            path(fill = androidx.compose.ui.graphics.SolidColor(Color(0xFF4285F4))) {
+            path(fill = SolidColor(Color(0xFF4285F4))) {
                 moveTo(22.56f, 12.25f)
                 curveTo(22.56f, 11.47f, 22.49f, 10.73f, 22.36f, 10.0f)
                 lineTo(12.0f, 10.0f)
@@ -326,195 +653,39 @@ fun GoogleIcon() {
                 curveTo(21.39f, 18.38f, 22.56f, 15.6f, 22.56f, 12.25f)
                 close()
             }
-            path(fill = androidx.compose.ui.graphics.SolidColor(Color(0xFF34A853))) {
+            path(fill = SolidColor(Color(0xFF34A853))) {
                 moveTo(12.0f, 23.0f)
-                curveTo(14.97f, 23.0f, 17.46f, 22.01f, 19.31f, 20.3f)
+                curveTo(14.97f, 23.0f, 17.46f, 22.02f, 19.31f, 20.3f)
                 lineTo(15.74f, 17.54f)
-                curveTo(14.74f, 18.21f, 13.48f, 18.62f, 12.0f, 18.62f)
-                curveTo(9.13f, 18.62f, 6.7f, 16.68f, 5.82f, 14.07f)
+                curveTo(14.75f, 18.2f, 13.48f, 18.61f, 12.0f, 18.61f)
+                curveTo(9.13f, 18.61f, 6.7f, 16.67f, 5.83f, 14.07f)
                 lineTo(2.15f, 14.07f)
                 lineTo(2.15f, 16.92f)
-                curveTo(3.97f, 20.54f, 7.68f, 23.0f, 12.0f, 23.0f)
+                curveTo(3.97f, 20.53f, 7.7f, 23.0f, 12.0f, 23.0f)
                 close()
             }
-            path(fill = androidx.compose.ui.graphics.SolidColor(Color(0xFFFBBC05))) {
-                moveTo(5.82f, 14.07f)
-                curveTo(5.59f, 13.4f, 5.46f, 12.71f, 5.46f, 12.0f)
-                curveTo(5.46f, 11.29f, 5.59f, 10.6f, 5.82f, 9.93f)
-                lineTo(2.15f, 9.93f)
+            path(fill = SolidColor(Color(0xFFFBBC05))) {
+                moveTo(5.83f, 14.07f)
+                curveTo(5.61f, 13.41f, 5.48f, 12.72f, 5.48f, 12.0f)
+                curveTo(5.48f, 11.28f, 5.61f, 10.59f, 5.83f, 9.93f)
+                lineTo(5.83f, 7.08f)
                 lineTo(2.15f, 7.08f)
-                curveTo(1.4f, 8.57f, 1.0f, 10.23f, 1.0f, 12.0f)
-                curveTo(1.0f, 13.77f, 1.4f, 15.43f, 2.15f, 16.92f)
-                lineTo(5.82f, 14.07f)
+                curveTo(1.39f, 8.59f, 0.95f, 10.24f, 0.95f, 12.0f)
+                curveTo(0.95f, 13.76f, 1.39f, 15.41f, 2.15f, 16.92f)
+                lineTo(5.83f, 14.07f)
                 close()
             }
-            path(fill = androidx.compose.ui.graphics.SolidColor(Color(0xFFEA4335))) {
+            path(fill = SolidColor(Color(0xFFEA4335))) {
                 moveTo(12.0f, 5.38f)
-                curveTo(13.62f, 5.38f, 15.08f, 5.93f, 16.22f, 7.02f)
-                lineTo(19.39f, 3.85f)
-                curveTo(17.46f, 2.05f, 14.97f, 1.0f, 12.0f, 1.0f)
-                curveTo(7.68f, 1.0f, 3.97f, 3.46f, 2.15f, 7.08f)
-                lineTo(5.82f, 9.93f)
-                curveTo(6.7f, 7.32f, 9.13f, 5.38f, 12.0f, 5.38f)
+                curveTo(13.62f, 5.38f, 15.06f, 5.94f, 16.21f, 7.02f)
+                lineTo(19.39f, 3.84f)
+                curveTo(17.45f, 2.03f, 14.97f, 0.95f, 12.0f, 0.95f)
+                curveTo(7.7f, 0.95f, 3.97f, 3.42f, 2.15f, 7.08f)
+                lineTo(5.83f, 9.93f)
+                curveTo(6.7f, 7.33f, 9.13f, 5.38f, 12.0f, 5.38f)
                 close()
             }
         }.build()
     }
-    Box(
-        modifier = Modifier
-            .size(32.dp)
-            .background(Color.White, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(imageVector = vector, contentDescription = "Google", modifier = Modifier.size(18.dp), tint = Color.Unspecified)
-    }
-}
-
-@Composable
-fun GitHubIcon() {
-    val vector = remember {
-        androidx.compose.ui.graphics.vector.ImageVector.Builder(
-            name = "GitHub",
-            defaultWidth = 24.dp,
-            defaultHeight = 24.dp,
-            viewportWidth = 24f,
-            viewportHeight = 24f
-        ).apply {
-            path(fill = androidx.compose.ui.graphics.SolidColor(Color.White)) {
-                moveTo(12.0f, 2.0f)
-                curveTo(6.477f, 2.0f, 2.0f, 6.477f, 2.0f, 12.0f)
-                curveTo(2.0f, 16.42f, 4.865f, 20.166f, 8.839f, 21.489f)
-                curveTo(9.339f, 21.581f, 9.521f, 21.272f, 9.521f, 21.007f)
-                curveTo(9.521f, 20.77f, 9.513f, 20.141f, 9.508f, 19.307f)
-                curveTo(6.726f, 19.91f, 6.139f, 17.967f, 6.139f, 17.967f)
-                curveTo(5.685f, 16.811f, 5.029f, 16.505f, 5.029f, 16.505f)
-                curveTo(4.121f, 15.885f, 5.098f, 15.897f, 5.098f, 15.897f)
-                curveTo(6.101f, 15.967f, 6.629f, 16.927f, 6.629f, 16.927f)
-                curveTo(7.521f, 18.456f, 8.97f, 18.014f, 9.539f, 17.758f)
-                curveTo(9.631f, 17.112f, 9.889f, 16.672f, 10.175f, 16.422f)
-                curveTo(7.955f, 16.169f, 5.62f, 15.312f, 5.62f, 11.469f)
-                curveTo(5.62f, 10.378f, 6.01f, 9.485f, 6.649f, 8.786f)
-                curveTo(6.546f, 8.533f, 6.203f, 7.516f, 6.747f, 6.139f)
-                curveTo(6.747f, 6.139f, 7.587f, 5.87f, 9.497f, 7.164f)
-                curveTo(10.296f, 6.942f, 11.151f, 6.832f, 12.001f, 6.828f)
-                curveTo(12.85f, 6.832f, 13.705f, 6.942f, 14.505f, 7.164f)
-                curveTo(16.415f, 5.87f, 17.253f, 6.139f, 17.253f, 6.139f)
-                curveTo(17.799f, 7.516f, 17.456f, 8.533f, 17.353f, 8.786f)
-                curveTo(17.993f, 9.485f, 18.381f, 10.378f, 18.381f, 11.469f)
-                curveTo(18.381f, 15.311f, 16.044f, 16.156f, 13.817f, 16.404f)
-                curveTo(14.176f, 16.713f, 14.495f, 17.323f, 14.495f, 18.256f)
-                curveTo(14.495f, 19.592f, 14.483f, 20.671f, 14.483f, 21.007f)
-                curveTo(14.483f, 21.274f, 14.663f, 21.585f, 15.171f, 21.487f)
-                curveTo(19.143f, 20.16f, 22.0f, 16.416f, 22.0f, 12.0f)
-                curveTo(22.0f, 6.477f, 17.523f, 2.0f, 12.0f, 2.0f)
-                close()
-            }
-        }.build()
-    }
-    Icon(imageVector = vector, contentDescription = "GitHub", modifier = Modifier.size(24.dp), tint = Color.Unspecified)
-}
-
-@Composable
-fun MyTuitionMascot(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-    ) {
-        // Small heart/sparkle above
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = 24.dp, x = (-20).dp)
-                .size(16.dp)
-                .background(Color.White, RoundedCornerShape(8.dp))
-                .graphicsLayer { rotationZ = -15f }
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = 20.dp, x = (-10).dp)
-                .size(12.dp)
-                .background(Color.White, RoundedCornerShape(6.dp))
-                .graphicsLayer { rotationZ = -15f }
-        )
-
-        // Eyes
-        Row(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp)
-        ) {
-            MascotEye()
-            MascotEye()
-        }
-
-        // Nostrils
-        Row(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = 60.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Box(modifier = Modifier.size(6.dp).background(MyTuitionColors.DeepNavyText, CircleShape))
-            Box(modifier = Modifier.size(6.dp).background(MyTuitionColors.DeepNavyText, CircleShape))
-        }
-
-        // Eyebrows
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(x = (-50).dp, y = (-40).dp)
-                .size(width = 32.dp, height = 8.dp)
-                .background(MyTuitionColors.DeepNavyText, RoundedCornerShape(4.dp))
-                .graphicsLayer { rotationZ = -10f }
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(x = 50.dp, y = (-40).dp)
-                .size(width = 32.dp, height = 8.dp)
-                .background(MyTuitionColors.DeepNavyText, RoundedCornerShape(4.dp))
-                .graphicsLayer { rotationZ = 10f }
-        )
-    }
-}
-
-@Composable
-fun MascotEye() {
-    Box(
-        modifier = Modifier
-            .size(width = 80.dp, height = 90.dp)
-            .background(Color.White, RoundedCornerShape(40.dp))
-            .border(
-                width = 3.dp, 
-                color = MyTuitionColors.DeepNavyText.copy(alpha = 0.05f), 
-                shape = RoundedCornerShape(40.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Pupil
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(MyTuitionColors.DeepNavyText, CircleShape)
-                .offset(x = 2.dp, y = 4.dp)
-        ) {
-            // Highlight
-            Box(
-                modifier = Modifier
-                    .size(14.dp)
-                    .background(Color.White, CircleShape)
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-8).dp, y = 8.dp)
-            )
-            // Secondary small highlight
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .background(Color.White.copy(alpha = 0.8f), CircleShape)
-                    .align(Alignment.BottomStart)
-                    .offset(x = 12.dp, y = (-12).dp)
-            )
-        }
-    }
+    Icon(imageVector = vector, contentDescription = "Google", modifier = modifier, tint = Color.Unspecified)
 }

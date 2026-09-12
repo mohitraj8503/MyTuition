@@ -3,17 +3,24 @@ package com.example.mytuition.core.designsystem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
 val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF6750A4),
-    onPrimary = Color(0xFFFFFFFF),
-    secondary = Color(0xFF625B71),
-    onSecondary = Color(0xFFFFFFFF),
-    background = Color(0xFFFFFBFE),
-    onBackground = Color(0xFF1C1B1F),
-    surface = Color(0xFFFFFBFE),
-    onSurface = Color(0xFF1C1B1F)
+    primary = MyTuitionColors.PrimaryPurple,
+    onPrimary = MyTuitionColors.TextOnPurple,
+    primaryContainer = MyTuitionColors.PrimaryPurpleLight,
+    onPrimaryContainer = MyTuitionColors.PrimaryPurpleDark,
+    secondary = MyTuitionColors.PrimaryPurpleDark,
+    onSecondary = MyTuitionColors.TextOnPurple,
+    secondaryContainer = MyTuitionColors.PrimaryPurpleGhost,
+    onSecondaryContainer = MyTuitionColors.PrimaryPurple,
+    background = MyTuitionColors.ScreenBackground,
+    onBackground = MyTuitionColors.TextPrimary,
+    surface = MyTuitionColors.CardWhite,
+    onSurface = MyTuitionColors.TextPrimary,
+    surfaceVariant = MyTuitionColors.SurfaceVariant,
+    onSurfaceVariant = MyTuitionColors.TextSecondary,
+    outline = MyTuitionColors.DividerColor,
+    error = MyTuitionColors.StatusRed
 )
 
 @Composable

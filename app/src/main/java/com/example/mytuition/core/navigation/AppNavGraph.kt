@@ -8,8 +8,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.mytuition.feature.auth.LoginScreen
+import com.example.mytuition.feature.classdetail.ClassDetailScreen
 import com.example.mytuition.feature.home.MainScreen
+import com.example.mytuition.feature.homework.HomeworkDetailScreen
+import com.example.mytuition.feature.onboarding.OnboardingScreen
 import com.example.mytuition.feature.splash.SplashScreen
+import com.example.mytuition.feature.subjects.SubjectDetailScreen
 
 @Composable
 fun AppNavGraph(
@@ -26,12 +30,25 @@ fun AppNavGraph(
                         popUpTo(Routes.Splash) { inclusive = true }
                     }
                 },
+                onNavigateToOnboarding = {
+                    navController.navigate(Routes.Login) {
+                        popUpTo(Routes.Splash) { inclusive = true }
+                    }
+                },
                 onNavigateToLogin = {
                     navController.navigate(Routes.Login) {
                         popUpTo(Routes.Splash) { inclusive = true }
                     }
                 }
             )
+        }
+
+        composable(Routes.Onboarding) {
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                navController.navigate(Routes.Login) {
+                    popUpTo(Routes.Onboarding) { inclusive = true }
+                }
+            }
         }
         
         composable(Routes.Login) {
@@ -51,6 +68,9 @@ fun AppNavGraph(
                         popUpTo(Routes.Home) { inclusive = true }
                     }
                 },
+                onNavigateToClassDetail = { classId ->
+                    navController.navigate(Routes.classDetailRoute(classId))
+                },
                 onNavigateToHomeworkDetail = { homeworkId ->
                     navController.navigate(Routes.homeworkDetailRoute(homeworkId))
                 },
@@ -59,13 +79,29 @@ fun AppNavGraph(
                 }
             )
         }
+
+        composable(
+            route = "${Routes.ClassDetail}/{classId}",
+            arguments = listOf(navArgument("classId") { 
+                type = NavType.StringType 
+                defaultValue = "today"
+            })
+        ) { backStackEntry ->
+            val classId = backStackEntry.arguments?.getString("classId") ?: "today"
+            ClassDetailScreen(
+                classId = classId,
+                onBackClick = { navController.popBackStack() },
+                onJoinClassClick = { /* join live session */ },
+                onMessageProfessor = { /* open chat */ }
+            )
+        }
         
         composable(
             route = "${Routes.HomeworkDetail}/{homeworkId}",
             arguments = listOf(navArgument("homeworkId") { type = NavType.StringType })
         ) { backStackEntry ->
             val homeworkId = backStackEntry.arguments?.getString("homeworkId") ?: ""
-            com.example.mytuition.feature.homework.HomeworkDetailScreen(
+            HomeworkDetailScreen(
                 homeworkId = homeworkId,
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -76,7 +112,7 @@ fun AppNavGraph(
             arguments = listOf(navArgument("subjectId") { type = NavType.StringType })
         ) { backStackEntry ->
             val subjectId = backStackEntry.arguments?.getString("subjectId") ?: ""
-            com.example.mytuition.feature.subjects.SubjectDetailScreen(
+            SubjectDetailScreen(
                 subjectId = subjectId,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToHomeworkDetail = { homeworkId ->

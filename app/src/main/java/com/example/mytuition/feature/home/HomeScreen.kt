@@ -232,12 +232,14 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         uiState.weekDates.forEach { weekDay ->
-                            DateChip(
-                                dayAbbreviation = weekDay.dayAbbr,
-                                dateNumber = weekDay.dayNumber,
-                                isActive = (weekDay.date == uiState.data.selectedDate),
-                                onClick = { viewModel.selectDate(weekDay.date) }
-                            )
+                            key(weekDay.date) {
+                                DateChip(
+                                    dayAbbreviation = weekDay.dayAbbr,
+                                    dateNumber = weekDay.dayNumber,
+                                    isActive = (weekDay.date == uiState.data.selectedDate),
+                                    onClick = { viewModel.selectDate(weekDay.date) }
+                                )
+                            }
                         }
                     }
 
@@ -283,27 +285,29 @@ fun HomeScreen(
                                 )
                             } else {
                                 uiState.timeline.forEach { session ->
-                                    val (icon, color) = when {
-                                        session.subjectName.contains("sketch", ignoreCase = true) ||
-                                        session.subjectName.contains("art", ignoreCase = true) ||
-                                        session.subjectName.contains("draw", ignoreCase = true) ||
-                                        session.subjectName.contains("creative", ignoreCase = true) -> Pair(Icons.Rounded.Brush, Color(0xFF8E24AA))
-                                        session.subjectName.contains("math", ignoreCase = true) -> Pair(Icons.Rounded.Calculate, MyTuitionColors.SubjectMath)
-                                        session.subjectName.contains("chem", ignoreCase = true) || session.subjectName.contains("sci", ignoreCase = true) -> Pair(Icons.Rounded.Science, MyTuitionColors.SubjectChemistry)
-                                        session.subjectName.contains("eng", ignoreCase = true) -> Pair(Icons.Rounded.MenuBook, MyTuitionColors.SubjectEnglish)
-                                        session.subjectName.contains("phys", ignoreCase = true) -> Pair(Icons.Rounded.Science, MyTuitionColors.SubjectPhysics)
-                                        else -> Pair(Icons.Rounded.Palette, MyTuitionColors.PrimaryPurple)
-                                    }
+                                    key(session.sessionId) {
+                                        val (icon, color) = when {
+                                            session.subjectName.contains("sketch", ignoreCase = true) ||
+                                            session.subjectName.contains("art", ignoreCase = true) ||
+                                            session.subjectName.contains("draw", ignoreCase = true) ||
+                                            session.subjectName.contains("creative", ignoreCase = true) -> Pair(Icons.Rounded.Brush, Color(0xFF8E24AA))
+                                            session.subjectName.contains("math", ignoreCase = true) -> Pair(Icons.Rounded.Calculate, MyTuitionColors.SubjectMath)
+                                            session.subjectName.contains("chem", ignoreCase = true) || session.subjectName.contains("sci", ignoreCase = true) -> Pair(Icons.Rounded.Science, MyTuitionColors.SubjectChemistry)
+                                            session.subjectName.contains("eng", ignoreCase = true) -> Pair(Icons.Rounded.MenuBook, MyTuitionColors.SubjectEnglish)
+                                            session.subjectName.contains("phys", ignoreCase = true) -> Pair(Icons.Rounded.Science, MyTuitionColors.SubjectPhysics)
+                                            else -> Pair(Icons.Rounded.Palette, MyTuitionColors.PrimaryPurple)
+                                        }
 
-                                    TimelineSessionCard(
-                                        time = session.time,
-                                        subjectName = session.subjectName,
-                                        subTopic = session.topic,
-                                        iconColor = color,
-                                        icon = icon,
-                                        onMenuClick = { },
-                                        onClick = { onNavigateToSubjectDetail(session.sessionId) }
-                                    )
+                                        TimelineSessionCard(
+                                            time = session.time,
+                                            subjectName = session.subjectName,
+                                            subTopic = session.topic,
+                                            iconColor = color,
+                                            icon = icon,
+                                            onMenuClick = { },
+                                            onClick = { onNavigateToSubjectDetail(session.sessionId) }
+                                        )
+                                    }
                                 }
                             }
                         }

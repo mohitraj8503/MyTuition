@@ -1,7 +1,7 @@
 package com.example.mytuition.core.designsystem.components
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,26 +10,27 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.mytuition.core.designsystem.MyTuitionAnimations
 import com.example.mytuition.core.designsystem.MyTuitionColors
 import com.example.mytuition.core.designsystem.darken
+import kotlinx.coroutines.launch
 
 /**
- * 3D Puffy Claymorphic Card Surface
- * - Thick border 8% darker than fill
- * - Double shadow (soft outer ambient+spot + inner bottom thickness gradient)
- * - Interactive squishy compression on press (scale + elevation reduce)
+ * 3D Puffy Claymorphic Card Surface — GPU-Optimized for 60/90/120Hz
+ * - Uses graphicsLayer scaleX/scaleY (zero recomposition on press)
+ * - Animatable instance with spring physics
+ * - Retains full double-shadow and inner thickness gradient
  */
 @Composable
 fun ClayCard(
@@ -44,28 +45,29 @@ fun ClayCard(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-
     val isClickable = onClick != null
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && isClickable) 0.97f else 1f,
-        animationSpec = MyTuitionAnimations.claySpring,
-        label = "clayCardScale"
-    )
+    val scaleAnim = remember { Animatable(1f) }
 
-    val currentElevation by animateDpAsState(
-        targetValue = if (isPressed && isClickable) 4.dp else elevation,
-        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f),
-        label = "clayCardElevation"
-    )
+    LaunchedEffect(isPressed, isClickable) {
+        if (isClickable) {
+            scaleAnim.animateTo(
+                targetValue = if (isPressed) 0.97f else 1f,
+                animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f)
+            )
+        }
+    }
 
     val shape = RoundedCornerShape(cornerRadius)
 
     Box(
         modifier = modifier
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scaleAnim.value
+                scaleY = scaleAnim.value
+            }
             .shadow(
-                elevation = currentElevation,
+                elevation = if (isPressed && isClickable) 4.dp else elevation,
                 shape = shape,
                 ambientColor = Color(0x331A1A1A),
                 spotColor = Color(0x221A1A1A)

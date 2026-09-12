@@ -36,6 +36,10 @@ object AppContainer {
         FirebaseFeeRepository()
     }
 
+    val profileRepository: com.example.mytuition.core.data.repository.ProfileRepository by lazy {
+        com.example.mytuition.core.data.repository.FirebaseProfileRepository()
+    }
+
     val getHomeworkListUseCase: GetHomeworkListUseCase by lazy {
         GetHomeworkListUseCase(homeworkRepository)
     }

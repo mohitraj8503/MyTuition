@@ -1,5 +1,8 @@
 package com.example.mytuition.core.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Homework(
     val id: String,
     val subjectName: String,

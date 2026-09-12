@@ -1,7 +1,7 @@
 package com.example.mytuition.core.designsystem.components
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,21 +15,21 @@ import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mytuition.core.designsystem.MyTuitionAnimations
 import com.example.mytuition.core.designsystem.MyTuitionColors
 import com.example.mytuition.core.designsystem.MyTuitionTypography
 import com.example.mytuition.core.designsystem.darken
@@ -49,16 +49,14 @@ fun TimelineSessionCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = MyTuitionAnimations.claySpring,
-        label = "timelineCardScale"
-    )
-    val elevation by animateDpAsState(
-        targetValue = if (isPressed) 4.dp else 8.dp,
-        animationSpec = MyTuitionAnimations.claySpringDp,
-        label = "timelineCardElevation"
-    )
+    val scaleAnim = remember { Animatable(1f) }
+
+    LaunchedEffect(isPressed) {
+        scaleAnim.animateTo(
+            targetValue = if (isPressed) 0.97f else 1f,
+            animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f)
+        )
+    }
 
     val cardShape = RoundedCornerShape(26.dp)
 
@@ -118,13 +116,16 @@ fun TimelineSessionCard(
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        // White Clay Card
+        // White Clay Card with GPU-accelerated graphicsLayer scale
         Box(
             modifier = Modifier
                 .weight(1f)
-                .scale(scale)
+                .graphicsLayer {
+                    scaleX = scaleAnim.value
+                    scaleY = scaleAnim.value
+                }
                 .shadow(
-                    elevation = elevation,
+                    elevation = if (isPressed) 4.dp else 8.dp,
                     shape = cardShape,
                     ambientColor = Color(0x261A1A1A),
                     spotColor = Color(0x1E1A1A1A)

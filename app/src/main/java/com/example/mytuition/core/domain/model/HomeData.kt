@@ -1,7 +1,9 @@
 package com.example.mytuition.core.domain.model
 
+import androidx.compose.runtime.Immutable
 import com.example.mytuition.core.designsystem.components.NextClassInfo
 
+@Immutable
 data class WeekDayItem(
     val date: String,          // "2025-08-17"
     val dayAbbr: String,      // "Mon"
@@ -9,6 +11,7 @@ data class WeekDayItem(
     val hasClasses: Boolean
 )
 
+@Immutable
 data class TimelineSessionItem(
     val sessionId: String,
     val time: String,
@@ -24,6 +27,7 @@ data class TimelineSessionItem(
     val status: String
 )
 
+@Immutable
 data class HomeSummary(
     val attendancePercent: Int = 92,
     val classesAttended: Int = 18,
@@ -34,6 +38,7 @@ data class HomeSummary(
     val outstandingFeeText: String = "₹2,500 due on 10 Sep"
 )
 
+@Immutable
 data class AnnouncementItem(
     val id: String,
     val title: String,
@@ -42,6 +47,7 @@ data class AnnouncementItem(
     val date: String
 )
 
+@Immutable
 data class HomeData(
     val studentName: String,
     val className: String,

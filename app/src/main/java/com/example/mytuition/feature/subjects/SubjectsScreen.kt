@@ -103,7 +103,10 @@ fun SubjectsScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(uiState.subjects) { subject ->
+                        items(
+                            items = uiState.subjects,
+                            key = { it.id }
+                        ) { subject ->
                             val (iconColor, icon) = when {
                                 subject.name.contains("Physic", ignoreCase = true) ->
                                     Pair(MyTuitionColors.SubjectPhysics, Icons.Rounded.Science)

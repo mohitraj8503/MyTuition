@@ -43,9 +43,25 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
-      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      // R8 full mode — minify + obfuscate + shrink resources
+      isMinifyEnabled = true
+      isShrinkResources = true
+      proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro"
+      )
       signingConfig = signingConfigs.getByName("release")
+    }
+    // Minified debug — test obfuscated code without a release key
+    create("minifiedDebug") {
+      initWith(getByName("debug"))
+      isMinifyEnabled = true
+      isShrinkResources = true
+      proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro"
+      )
+      matchingFallbacks += listOf("debug")
     }
     debug {
       val debugKeystoreFile = file("${rootDir}/debug.keystore")

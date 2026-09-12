@@ -208,7 +208,7 @@ fun ProfileScreen(
 
                         item {
                             Text(
-                                text = "MyTuition v2.1 • Student Portal • Secure & Encrypted 🛡️",
+                                text = "MyTuition v1.2 • Student Portal • Secure & Encrypted 🛡️",
                                 style = MyTuitionTypography.LabelSmall.copy(
                                     fontSize = 12.sp,
                                     color = MyTuitionColors.TextTertiary

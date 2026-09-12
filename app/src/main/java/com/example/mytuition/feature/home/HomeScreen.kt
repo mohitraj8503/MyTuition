@@ -16,8 +16,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.Calculate
+import androidx.compose.material.icons.rounded.ColorLens
 import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -281,11 +284,15 @@ fun HomeScreen(
                             } else {
                                 uiState.timeline.forEach { session ->
                                     val (icon, color) = when {
+                                        session.subjectName.contains("sketch", ignoreCase = true) ||
+                                        session.subjectName.contains("art", ignoreCase = true) ||
+                                        session.subjectName.contains("draw", ignoreCase = true) ||
+                                        session.subjectName.contains("creative", ignoreCase = true) -> Pair(Icons.Rounded.Brush, Color(0xFF8E24AA))
                                         session.subjectName.contains("math", ignoreCase = true) -> Pair(Icons.Rounded.Calculate, MyTuitionColors.SubjectMath)
                                         session.subjectName.contains("chem", ignoreCase = true) || session.subjectName.contains("sci", ignoreCase = true) -> Pair(Icons.Rounded.Science, MyTuitionColors.SubjectChemistry)
                                         session.subjectName.contains("eng", ignoreCase = true) -> Pair(Icons.Rounded.MenuBook, MyTuitionColors.SubjectEnglish)
                                         session.subjectName.contains("phys", ignoreCase = true) -> Pair(Icons.Rounded.Science, MyTuitionColors.SubjectPhysics)
-                                        else -> Pair(Icons.Rounded.Calculate, MyTuitionColors.PrimaryPurple)
+                                        else -> Pair(Icons.Rounded.Palette, MyTuitionColors.PrimaryPurple)
                                     }
 
                                     TimelineSessionCard(

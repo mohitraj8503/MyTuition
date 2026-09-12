@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mytuition.core.designsystem.MyTuitionColors
@@ -87,9 +88,12 @@ fun FloatingBottomNav(
                         label = "navIconColor"
                     )
 
+                    // Give more space to active item so label stays strictly on 1 line
+                    val weight = if (isActive) 1.6f else 0.8f
+
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(weight)
                             .fillMaxHeight()
                             .scale(scale)
                             .clip(RoundedCornerShape(20.dp))
@@ -102,12 +106,13 @@ fun FloatingBottomNav(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
-                            // Active item: puffy purple clay ball (44dp) behind icon
+                            // Active item: puffy purple clay ball (40dp) behind icon
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
+                                    .size(if (isActive) 40.dp else 36.dp)
                                     .then(
                                         if (isActive) {
                                             Modifier
@@ -123,7 +128,7 @@ fun FloatingBottomNav(
                                     imageVector = item.icon,
                                     contentDescription = item.label,
                                     tint = iconColor,
-                                    modifier = Modifier.size(28.dp) // 28dp big icon
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
 
@@ -132,10 +137,13 @@ fun FloatingBottomNav(
                                 Text(
                                     text = item.label,
                                     style = MyTuitionTypography.LabelSmall.copy(
-                                        fontSize = 13.sp,
+                                        fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MyTuitionColors.PrimaryPurple
-                                    )
+                                    ),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }

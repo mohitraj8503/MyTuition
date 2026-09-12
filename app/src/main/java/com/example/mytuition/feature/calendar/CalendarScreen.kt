@@ -36,6 +36,7 @@ import com.example.mytuition.core.designsystem.MyTuitionShapes
 import com.example.mytuition.core.designsystem.MyTuitionSpacing
 import com.example.mytuition.core.designsystem.MyTuitionTypography
 import com.example.mytuition.core.designsystem.PastelBackground
+import com.example.mytuition.core.designsystem.components.ClayCard
 import com.example.mytuition.core.designsystem.components.DateChip
 import com.example.mytuition.core.designsystem.components.FilterChipRow
 import com.example.mytuition.core.designsystem.darken
@@ -53,8 +54,14 @@ data class CalendarEvent(
     val subjectColor: Color
 )
 
+enum class CalendarViewMode {
+    WEEK,
+    MONTH
+}
+
 @Composable
 fun CalendarScreen() {
+    var viewMode by remember { mutableStateOf(CalendarViewMode.MONTH) }
     var selectedDayNumber by remember { mutableIntStateOf(12) }
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     var currentMonthIndex by remember { mutableIntStateOf(0) }
@@ -123,9 +130,41 @@ fun CalendarScreen() {
                 dayNumber = 14,
                 type = "Class",
                 subjectColor = MyTuitionColors.SubjectHistory
+            ),
+            CalendarEvent(
+                id = "e6",
+                title = "Creative Sketching & Design",
+                teacher = "Dr. Aalvina Fatehi",
+                time = "05:00 PM - 06:30 PM",
+                location = "Room 4B",
+                dayNumber = 17,
+                type = "Class",
+                subjectColor = Color(0xFF8E24AA)
+            ),
+            CalendarEvent(
+                id = "e7",
+                title = "English Grammar & Writing",
+                teacher = "Mrs. Sarah Jenkins",
+                time = "03:00 PM - 04:30 PM",
+                location = "Room 201",
+                dayNumber = 20,
+                type = "Class",
+                subjectColor = Color(0xFF2E7D32)
+            ),
+            CalendarEvent(
+                id = "e8",
+                title = "Science Monthly Assessment",
+                teacher = "Dr. Aalvina Fatehi",
+                time = "10:00 AM - 12:00 PM",
+                location = "Hall B",
+                dayNumber = 25,
+                type = "Exam",
+                subjectColor = MyTuitionColors.SubjectPhysics
             )
         )
     }
+
+    val eventDays = remember(events) { events.map { it.dayNumber }.toSet() }
 
     val filterOptions = listOf("All Sessions", "Classes Only", "Exams Only")
 
@@ -157,7 +196,7 @@ fun CalendarScreen() {
                     Text(
                         text = "Calendar",
                         style = MyTuitionTypography.HeadlineLarge.copy(
-                            fontSize = 32.sp,
+                            fontSize = 30.sp,
                             fontWeight = FontWeight.Bold,
                             color = MyTuitionColors.TextPrimary
                         )
@@ -174,11 +213,11 @@ fun CalendarScreen() {
                 }
 
                 // Month switcher arrows
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .shadow(4.dp, CircleShape, spotColor = Color(0x18000000))
+                            .size(40.dp)
+                            .shadow(3.dp, CircleShape, spotColor = Color(0x18000000))
                             .clip(CircleShape)
                             .background(MyTuitionColors.CardWhite)
                             .border(1.5.dp, MyTuitionColors.CardWhite.darken(0.08f), CircleShape)
@@ -191,14 +230,14 @@ fun CalendarScreen() {
                             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                             contentDescription = "Previous Month",
                             tint = MyTuitionColors.TextPrimary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .shadow(4.dp, CircleShape, spotColor = Color(0x18000000))
+                            .size(40.dp)
+                            .shadow(3.dp, CircleShape, spotColor = Color(0x18000000))
                             .clip(CircleShape)
                             .background(MyTuitionColors.CardWhite)
                             .border(1.5.dp, MyTuitionColors.CardWhite.darken(0.08f), CircleShape)
@@ -211,29 +250,104 @@ fun CalendarScreen() {
                             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                             contentDescription = "Next Month",
                             tint = MyTuitionColors.TextPrimary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
 
-            // Horizontal scrolling DateChip row (10dp gap)
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = MyTuitionSpacing.lg),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
+            // 2-Way View Mode Selector: "Month View" & "Week View"
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MyTuitionSpacing.lg, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(days) { day ->
-                    DateChip(
-                        dayAbbreviation = day.dayName,
-                        dateNumber = day.dayNumber.toString(),
-                        isActive = day.dayNumber == selectedDayNumber,
-                        onClick = { selectedDayNumber = day.dayNumber }
+                // Month View Tab
+                val isMonth = viewMode == CalendarViewMode.MONTH
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .shadow(if (isMonth) 3.dp else 1.dp, RoundedCornerShape(20.dp), spotColor = Color(0x15000000))
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (isMonth) MyTuitionColors.PrimaryPurple else MyTuitionColors.CardWhite)
+                        .border(
+                            1.5.dp,
+                            if (isMonth) MyTuitionColors.PrimaryPurple.darken(0.1f) else MyTuitionColors.CardWhite.darken(0.08f),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .clickable { viewMode = CalendarViewMode.MONTH },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "📅 Month Grid",
+                        style = MyTuitionTypography.LabelMedium.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isMonth) Color.White else MyTuitionColors.TextPrimary
+                        )
+                    )
+                }
+
+                // Week View Tab
+                val isWeek = viewMode == CalendarViewMode.WEEK
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .shadow(if (isWeek) 3.dp else 1.dp, RoundedCornerShape(20.dp), spotColor = Color(0x15000000))
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (isWeek) MyTuitionColors.PrimaryPurple else MyTuitionColors.CardWhite)
+                        .border(
+                            1.5.dp,
+                            if (isWeek) MyTuitionColors.PrimaryPurple.darken(0.1f) else MyTuitionColors.CardWhite.darken(0.08f),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .clickable { viewMode = CalendarViewMode.WEEK },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🗓️ Week View",
+                        style = MyTuitionTypography.LabelMedium.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isWeek) Color.White else MyTuitionColors.TextPrimary
+                        )
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Calendar Display according to 2-Way mode
+            if (viewMode == CalendarViewMode.MONTH) {
+                // Real Monthly Calendar Grid (Like a real physical/system calendar)
+                FullMonthCalendarGrid(
+                    selectedDayNumber = selectedDayNumber,
+                    eventDays = eventDays,
+                    onDayClick = { selectedDayNumber = it },
+                    modifier = Modifier.padding(horizontal = MyTuitionSpacing.lg)
+                )
+            } else {
+                // Horizontal scrolling Week strip view
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = MyTuitionSpacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(days) { day ->
+                        DateChip(
+                            dayAbbreviation = day.dayName,
+                            dateNumber = day.dayNumber.toString(),
+                            isActive = day.dayNumber == selectedDayNumber,
+                            onClick = { selectedDayNumber = day.dayNumber }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Filter chips
             FilterChipRow(
@@ -243,14 +357,41 @@ fun CalendarScreen() {
                 modifier = Modifier.padding(horizontal = MyTuitionSpacing.lg)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Day label
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = MyTuitionSpacing.lg),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Sessions for Nov $selectedDayNumber",
+                    style = MyTuitionTypography.TitleMedium.copy(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MyTuitionColors.TextPrimary
+                    )
+                )
+                Text(
+                    text = "${filteredEvents.size} scheduled",
+                    style = MyTuitionTypography.LabelSmall.copy(
+                        fontSize = 12.sp,
+                        color = MyTuitionColors.TextSecondary
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Schedule timeline list
             if (filteredEvents.isEmpty()) {
                 ClayZeroState(
-                    title = "No Sessions Today 🗓️",
-                    subtitle = "Enjoy your free time or explore upcoming classes!",
-                    modifier = Modifier.padding(vertical = 40.dp)
+                    title = "No Sessions on Nov $selectedDayNumber 🗓️",
+                    subtitle = "Tap any date with a dot to view scheduled classes and tests.",
+                    modifier = Modifier.padding(vertical = 24.dp)
                 )
             } else {
                 LazyColumn(
@@ -260,10 +401,137 @@ fun CalendarScreen() {
                         end = MyTuitionSpacing.lg,
                         bottom = 110.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredEvents, key = { it.id }) { event ->
                         CalendarScheduleCard(event = event)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Real Monthly Calendar Grid
+ * Shows standard Sun, Mon, Tue, Wed, Thu, Fri, Sat columns
+ * Days 1-30 formatted into 7-column rows with active day highlight & event indicators
+ */
+@Composable
+private fun FullMonthCalendarGrid(
+    selectedDayNumber: Int,
+    eventDays: Set<Int>,
+    onDayClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val dayOfWeekLabels = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    // November 2024 starts on Friday (5 blank cells before 1st)
+    // 30 days total
+    val startDayOffset = 5 // Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5
+    val daysInMonth = 30
+
+    ClayCard(
+        modifier = modifier.fillMaxWidth(),
+        cornerRadius = 24.dp,
+        elevation = 6.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            // Weekday Headers
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                dayOfWeekLabels.forEach { label ->
+                    Text(
+                        text = label,
+                        modifier = Modifier.weight(1f),
+                        style = MyTuitionTypography.LabelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (label == "Sun") MyTuitionColors.StatusRed else MyTuitionColors.TextSecondary
+                        ),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Calendar day cells in rows
+            val totalCells = startDayOffset + daysInMonth
+            val rowCount = (totalCells + 6) / 7
+
+            for (rowIndex in 0 until rowCount) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    for (colIndex in 0 until 7) {
+                        val cellIndex = rowIndex * 7 + colIndex
+                        val dayNum = cellIndex - startDayOffset + 1
+
+                        if (dayNum in 1..daysInMonth) {
+                            val isSelected = dayNum == selectedDayNumber
+                            val hasEvents = eventDays.contains(dayNum)
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .padding(2.dp)
+                                    .then(
+                                        if (isSelected) {
+                                            Modifier
+                                                .shadow(3.dp, CircleShape, spotColor = MyTuitionColors.PrimaryPurple.copy(alpha = 0.35f))
+                                                .clip(CircleShape)
+                                                .background(MyTuitionColors.PrimaryPurple)
+                                        } else if (hasEvents) {
+                                            Modifier
+                                                .clip(CircleShape)
+                                                .background(MyTuitionColors.PrimaryPurpleLight.copy(alpha = 0.4f))
+                                        } else {
+                                            Modifier.clip(CircleShape)
+                                        }
+                                    )
+                                    .clickable { onDayClick(dayNum) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = dayNum.toString(),
+                                        style = MyTuitionTypography.BodyMedium.copy(
+                                            fontSize = 13.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) Color.White else MyTuitionColors.TextPrimary
+                                        )
+                                    )
+                                    if (hasEvents) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(4.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isSelected) Color.White else MyTuitionColors.PrimaryPurple)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Blank cell for offset
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                            )
+                        }
                     }
                 }
             }

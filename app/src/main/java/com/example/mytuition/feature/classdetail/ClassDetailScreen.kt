@@ -76,6 +76,36 @@ fun ClassDetailScreen(
                         modifier = Modifier.size(36.dp)
                     )
                 }
+            } else if (uiState.error != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "⚠️",
+                            fontSize = 48.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = uiState.error ?: "Class session not found",
+                            style = MyTuitionTypography.TitleMedium.copy(
+                                color = MyTuitionColors.TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.loadClassDetail() },
+                            colors = ButtonDefaults.buttonColors(containerColor = MyTuitionColors.PrimaryPurple)
+                        ) {
+                            Text("Retry", color = Color.White)
+                        }
+                    }
+                }
             } else {
                 Column(
                     modifier = Modifier

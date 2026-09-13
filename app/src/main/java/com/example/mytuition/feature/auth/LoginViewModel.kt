@@ -12,13 +12,15 @@ import kotlinx.coroutines.launch
 enum class AuthProvider {
     GOOGLE,
     GITHUB,
-    DEMO
+    DEMO,
+    TEACHER_DEMO,
+    USERNAME
 }
 
 sealed interface LoginUiState {
     object Idle : LoginUiState
     data class Loading(val provider: AuthProvider) : LoginUiState
-    object Success : LoginUiState
+    data class Success(val role: com.example.mytuition.core.domain.model.UserRole = com.example.mytuition.core.domain.model.UserRole.STUDENT) : LoginUiState
     data class Error(val message: String) : LoginUiState
 }
 
@@ -34,7 +36,8 @@ class LoginViewModel(
             _uiState.value = LoginUiState.Loading(AuthProvider.GOOGLE)
             val result = authRepository.signInWithGoogle()
             if (result.isSuccess) {
-                _uiState.value = LoginUiState.Success
+                val session = result.getOrNull()
+                _uiState.value = LoginUiState.Success(session?.role ?: com.example.mytuition.core.domain.model.UserRole.STUDENT)
             } else {
                 _uiState.value = LoginUiState.Error("Couldn't sign in with Google.\nPlease try again.")
             }
@@ -46,7 +49,7 @@ class LoginViewModel(
             _uiState.value = LoginUiState.Loading(AuthProvider.GITHUB)
             val result = authRepository.signInWithGitHub()
             if (result.isSuccess) {
-                _uiState.value = LoginUiState.Success
+                _uiState.value = LoginUiState.Success()
             } else {
                 _uiState.value = LoginUiState.Error("Couldn't sign in with GitHub.\nPlease try again.")
             }
@@ -58,9 +61,35 @@ class LoginViewModel(
             _uiState.value = LoginUiState.Loading(AuthProvider.DEMO)
             val result = authRepository.enterDemoMode()
             if (result.isSuccess) {
-                _uiState.value = LoginUiState.Success
+                _uiState.value = LoginUiState.Success(com.example.mytuition.core.domain.model.UserRole.STUDENT)
             } else {
                 _uiState.value = LoginUiState.Error("Couldn't enter demo mode.\nPlease try again.")
+            }
+        }
+    }
+
+    fun enterTeacherDemoMode() {
+        viewModelScope.launch {
+            _uiState.value = LoginUiState.Loading(AuthProvider.TEACHER_DEMO)
+            val result = authRepository.enterTeacherDemoMode()
+            if (result.isSuccess) {
+                _uiState.value = LoginUiState.Success(com.example.mytuition.core.domain.model.UserRole.TEACHER)
+            } else {
+                _uiState.value = LoginUiState.Error("Couldn't enter teacher demo mode.\nPlease try again.")
+            }
+        }
+    }
+
+    fun signInWithUsername(username: String, password: String) {
+        viewModelScope.launch {
+            _uiState.value = LoginUiState.Loading(AuthProvider.USERNAME)
+            val result = authRepository.signInWithUsername(username, password)
+            if (result.isSuccess) {
+                val session = result.getOrNull()
+                _uiState.value = LoginUiState.Success(session?.role ?: com.example.mytuition.core.domain.model.UserRole.STUDENT)
+            } else {
+                val msg = result.exceptionOrNull()?.message ?: "Sign-in failed. Please verify credentials."
+                _uiState.value = LoginUiState.Error(msg)
             }
         }
     }

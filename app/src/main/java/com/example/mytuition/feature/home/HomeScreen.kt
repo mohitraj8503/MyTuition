@@ -86,25 +86,11 @@ fun HomeScreen(
                 }
             }
             is HomeUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = uiState.message,
-                            style = MyTuitionTypography.BodyLarge,
-                            color = MyTuitionColors.StatusRed
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        PillButton(
-                            text = "Retry",
-                            onClick = { /* trigger reload */ }
-                        )
-                    }
-                }
+                ErrorState(
+                    message = uiState.message,
+                    onRetry = { viewModel.loadHomeData() },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
             is HomeUiState.Success -> {
                 val scrollState = rememberScrollState()
@@ -117,6 +103,11 @@ fun HomeScreen(
                         .padding(horizontal = 20.dp)
                         .padding(top = 16.dp, bottom = 100.dp) // Generous bottom padding to clear floating nav
                 ) {
+                    if (uiState.isFromCache) {
+                        OfflineBanner()
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
                     // Header: Grid Icon (Left) + Profile Avatar with Purple Ring (Right)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -179,6 +170,64 @@ fun HomeScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
+                        }
+                    }
+
+                    // Emergency Banner (Urgent announcement or cancelled session)
+                    val urgentNotice = (uiState as? HomeUiState.Success)?.data?.announcements?.find { 
+                        it.type.equals("URGENT", ignoreCase = true) 
+                    }
+                    val cancelledSession = (uiState as? HomeUiState.Success)?.timeline?.find { 
+                        it.status.equals("CANCELLED", ignoreCase = true) 
+                    }
+
+                    if (urgentNotice != null || cancelledSession != null) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        val alertTitle = urgentNotice?.title ?: "Class Cancelled Today"
+                        val alertMsg = urgentNotice?.message ?: "${cancelledSession?.subjectName} class scheduled for today is cancelled."
+
+                        val alertShape = RoundedCornerShape(20.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(8.dp, alertShape, spotColor = Color(0xFFFF5252).copy(alpha = 0.3f))
+                                .clip(alertShape)
+                                .background(Color(0xFFFFEBEE))
+                                .border(1.5.dp, Color(0xFFFFCDD2), alertShape)
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(Color(0xFFFF5252), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("⚠️", fontSize = 16.sp)
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = alertTitle,
+                                        style = MyTuitionTypography.TitleSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFC62828),
+                                            fontSize = 15.sp
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = alertMsg,
+                                        style = MyTuitionTypography.BodySmall.copy(
+                                            color = Color(0xFFD32F2F),
+                                            fontSize = 13.sp
+                                        ),
+                                        maxLines = 2
+                                    )
+                                }
+                            }
                         }
                     }
 

@@ -38,7 +38,6 @@ fun FeeStatusBottomSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var isPaymentSuccess by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -145,10 +144,10 @@ fun FeeStatusBottomSheet(
                             color = pillBg
                         ) {
                             Text(
-                                text = if (isPaymentSuccess) "Paid ✓" else pillText,
+                                text = pillText,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isPaymentSuccess) Color(0xFF34C759) else pillColor,
+                                color = pillColor,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                             )
                         }
@@ -183,54 +182,47 @@ fun FeeStatusBottomSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Pay Now CTA Button
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val scale by animateFloatAsState(
-                targetValue = if (isPressed) 0.96f else 1f,
-                animationSpec = MyTuitionAnimations.claySpring,
-                label = "payBtnScale"
-            )
-
+            // Offline Payment Guidance Note
             Box(
                 modifier = Modifier
-                    .scale(scale)
                     .fillMaxWidth()
-                    .height(54.dp)
-                    .shadow(
-                        elevation = if (isPressed) 4.dp else 10.dp,
-                        shape = RoundedCornerShape(28.dp),
-                        ambientColor = Color(0x336C48FF),
-                        spotColor = Color(0x226C48FF)
-                    )
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFF6C48FF))
-                    .border(2.dp, Color(0xFF5538CC), RoundedCornerShape(28.dp))
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = { isPaymentSuccess = true }
-                    ),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (feeStatus == FeeStatus.PAID) Color(0xFFE8F9EE) else Color(0xFFF4F0FF))
+                    .border(1.5.dp, if (feeStatus == FeeStatus.PAID) Color(0xFFBCEECE) else Color(0xFFDED3FF), RoundedCornerShape(20.dp))
+                    .padding(16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = if (isPaymentSuccess) Icons.Rounded.CheckCircle else Icons.Rounded.CreditCard,
+                        imageVector = if (feeStatus == FeeStatus.PAID) Icons.Rounded.CheckCircle else Icons.Rounded.Receipt,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        tint = if (feeStatus == FeeStatus.PAID) Color(0xFF34C759) else MyTuitionColors.PrimaryPurple,
+                        modifier = Modifier.size(24.dp)
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = if (isPaymentSuccess) "Payment Verified via Razorpay ✓" else "Pay Now $amountText (UPI / Cards)",
-                        style = MyTuitionTypography.TitleMedium.copy(
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = if (feeStatus == FeeStatus.PAID) "Fee Received by Teacher ✓" else "Pay Directly to Teacher",
+                            style = MyTuitionTypography.TitleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = if (feeStatus == FeeStatus.PAID) Color(0xFF1B8738) else MyTuitionColors.PrimaryPurple
+                            )
                         )
-                    )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (feeStatus == FeeStatus.PAID)
+                                "Your tuition fee has been marked as received. Thank you!"
+                            else
+                                "Please pay your teacher directly via Cash or direct UPI. Once received, your teacher will confirm and mark your fee as paid.",
+                            style = MyTuitionTypography.BodySmall.copy(
+                                color = MyTuitionColors.TextSecondary,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp
+                            )
+                        )
+                    }
                 }
             }
 
@@ -276,7 +268,7 @@ fun FeeStatusBottomSheet(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "July 2025 Tuition Fee",
+                            text = "Tuition Fee Record",
                             style = MyTuitionTypography.BodyMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 13.sp,
@@ -284,7 +276,7 @@ fun FeeStatusBottomSheet(
                             )
                         )
                         Text(
-                            text = "Paid on 08 Jul 2025 • Razorpay UPI",
+                            text = "Direct payment to Teacher",
                             style = MyTuitionTypography.LabelSmall.copy(
                                 fontSize = 11.sp,
                                 color = MyTuitionColors.TextSecondary
@@ -294,7 +286,7 @@ fun FeeStatusBottomSheet(
                 }
 
                 Text(
-                    text = "₹2,500",
+                    text = amountText,
                     style = MyTuitionTypography.TitleSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = MyTuitionColors.TextPrimary,

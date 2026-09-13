@@ -16,7 +16,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Phone
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +32,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
@@ -52,16 +58,18 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (com.example.mytuition.core.domain.model.UserRole) -> Unit,
     viewModel: LoginViewModel = viewModel(
         factory = LoginViewModel.provideFactory(AppContainer.authRepository)
     )
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var phoneNumber by remember { mutableStateOf("") }
-    var isPhoneFocused by remember { mutableStateOf(false) }
+    var usernameInput by remember { mutableStateOf("") }
+    var isUsernameFocused by remember { mutableStateOf(false) }
+    var passwordInput by remember { mutableStateOf("") }
+    var isPasswordFocused by remember { mutableStateOf(false) }
+    var isPasswordVisible by remember { mutableStateOf(false) }
     var localErrorMessage by remember { mutableStateOf<String?>(null) }
-    var isSendingOtp by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -69,11 +77,11 @@ fun LoginScreen(
 
     LaunchedEffect(state) {
         if (state is LoginUiState.Success) {
-            isSendingOtp = false
-            onLoginSuccess()
+            val role = (state as LoginUiState.Success).role
+            onLoginSuccess(role)
             viewModel.resetState()
         } else if (state is LoginUiState.Error) {
-            isSendingOtp = false
+            localErrorMessage = "Invalid username or password"
             coroutineScope.launch {
                 for (i in 0..2) {
                     shakeOffset.animateTo(12f, tween(50))
@@ -84,7 +92,7 @@ fun LoginScreen(
         }
     }
 
-    val isAnyLoading = isSendingOtp || state is LoginUiState.Loading
+    val isAnyLoading = state is LoginUiState.Loading
 
     // Animated Floating Background Blobs (mint + peach + light blue)
     val infiniteTransition = rememberInfiniteTransition(label = "blobMotion")
@@ -190,8 +198,25 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.Bottom
             ) {
-                // Top area: 28% height for breathing room and overlapping mascot logo
-                Spacer(modifier = Modifier.weight(0.28f))
+                // Top area: Breathing room with MyTuition wordmark and logo
+                Box(
+                    modifier = Modifier
+                        .weight(0.28f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    Text(
+                        text = "My Tuition",
+                        style = MyTuitionTypography.HeadlineMedium.copy(
+                            color = MyTuitionColors.PrimaryPurple,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 64.dp)
+                    )
+                }
 
                 // Bottom 72%: White Clay Card
                 Box(
@@ -245,56 +270,37 @@ fun LoginScreen(
                                 maxLines = 2
                             )
 
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(18.dp))
 
-                            // PRIMARY FLOW: Phone Input Field (Clay Inset) with shake animation
-                            val phoneCorner = RoundedCornerShape(20.dp)
-                            val phoneBg = if (isPhoneFocused) Color(0xFFF5F2FF) else Color(0xFFF1F0F5)
-                            val phoneBorder = if (isPhoneFocused) MyTuitionColors.PrimaryPurple else Color(0xFFE8E6F0)
+                            // 1. Username Field (Clay Inset)
+                            val userCorner = RoundedCornerShape(20.dp)
+                            val userBg = if (isUsernameFocused) Color(0xFFF5F2FF) else Color(0xFFF1F0F5)
+                            val userBorder = if (isUsernameFocused) MyTuitionColors.PrimaryPurple else Color(0xFFE8E6F0)
 
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .offset(x = shakeOffset.value.dp)
-                                    .shadow(
-                                        elevation = if (isPhoneFocused) 8.dp else 0.dp,
-                                        shape = phoneCorner,
-                                        spotColor = MyTuitionColors.PrimaryPurple.copy(alpha = 0.25f),
-                                        ambientColor = Color(0x106C48FF)
-                                    )
-                                    .clip(phoneCorner)
-                                    .background(phoneBg)
-                                    .border(2.dp, phoneBorder, phoneCorner)
-                                    .padding(vertical = 16.dp, horizontal = 18.dp)
+                                    .clip(userCorner)
+                                    .background(userBg)
+                                    .border(2.dp, userBorder, userCorner)
+                                    .padding(vertical = 14.dp, horizontal = 18.dp)
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Phone,
-                                        contentDescription = "Phone",
-                                        tint = if (isPhoneFocused) MyTuitionColors.PrimaryPurple else MyTuitionColors.TextTertiary,
-                                        modifier = Modifier.size(24.dp)
+                                        imageVector = Icons.Rounded.Person,
+                                        contentDescription = "Username",
+                                        tint = if (isUsernameFocused) MyTuitionColors.PrimaryPurple else MyTuitionColors.TextTertiary,
+                                        modifier = Modifier.size(22.dp)
                                     )
-
                                     Spacer(modifier = Modifier.width(12.dp))
-
-                                    Text(
-                                        text = "+91",
-                                        style = MyTuitionTypography.LabelLarge.copy(
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF221A44)
-                                        )
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
                                     Box(modifier = Modifier.weight(1f)) {
-                                        if (phoneNumber.isEmpty()) {
+                                        if (usernameInput.isEmpty()) {
                                             Text(
-                                                text = "Enter phone number",
+                                                text = "Username (e.g. ayushsingh@chanakya)",
                                                 style = MyTuitionTypography.BodyMedium.copy(
                                                     fontSize = 15.sp,
                                                     color = MyTuitionColors.TextTertiary
@@ -302,12 +308,10 @@ fun LoginScreen(
                                             )
                                         }
                                         BasicTextField(
-                                            value = phoneNumber,
+                                            value = usernameInput,
                                             onValueChange = {
-                                                if (it.length <= 10 && it.all { char -> char.isDigit() }) {
-                                                    phoneNumber = it
-                                                    localErrorMessage = null
-                                                }
+                                                usernameInput = it.lowercase().replace(" ", "")
+                                                localErrorMessage = null
                                             },
                                             enabled = !isAnyLoading,
                                             singleLine = true,
@@ -317,34 +321,106 @@ fun LoginScreen(
                                                 color = Color(0xFF221A44)
                                             ),
                                             keyboardOptions = KeyboardOptions(
-                                                keyboardType = KeyboardType.Phone,
+                                                keyboardType = KeyboardType.Email,
+                                                autoCorrect = false,
+                                                imeAction = ImeAction.Next
+                                            ),
+                                            cursorBrush = SolidColor(MyTuitionColors.PrimaryPurple),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .onFocusChanged { isUsernameFocused = it.isFocused }
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // 2. Password Field (Clay Inset)
+                            val passCorner = RoundedCornerShape(20.dp)
+                            val passBg = if (isPasswordFocused) Color(0xFFF5F2FF) else Color(0xFFF1F0F5)
+                            val passBorder = if (isPasswordFocused) MyTuitionColors.PrimaryPurple else Color(0xFFE8E6F0)
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .offset(x = shakeOffset.value.dp)
+                                    .clip(passCorner)
+                                    .background(passBg)
+                                    .border(2.dp, passBorder, passCorner)
+                                    .padding(vertical = 14.dp, horizontal = 18.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Lock,
+                                        contentDescription = "Password",
+                                        tint = if (isPasswordFocused) MyTuitionColors.PrimaryPurple else MyTuitionColors.TextTertiary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        if (passwordInput.isEmpty()) {
+                                            Text(
+                                                text = "Password",
+                                                style = MyTuitionTypography.BodyMedium.copy(
+                                                    fontSize = 15.sp,
+                                                    color = MyTuitionColors.TextTertiary
+                                                )
+                                            )
+                                        }
+                                        BasicTextField(
+                                            value = passwordInput,
+                                            onValueChange = {
+                                                passwordInput = it
+                                                localErrorMessage = null
+                                            },
+                                            enabled = !isAnyLoading,
+                                            singleLine = true,
+                                            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                            textStyle = TextStyle(
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF221A44)
+                                            ),
+                                            keyboardOptions = KeyboardOptions(
+                                                keyboardType = KeyboardType.Password,
+                                                autoCorrect = false,
                                                 imeAction = ImeAction.Done
                                             ),
                                             keyboardActions = KeyboardActions(
                                                 onDone = {
                                                     focusManager.clearFocus()
-                                                    if (phoneNumber.length >= 10 && !isAnyLoading) {
-                                                        isSendingOtp = true
-                                                        coroutineScope.launch {
-                                                            delay(600)
-                                                            viewModel.enterDemoMode()
-                                                        }
+                                                    if (usernameInput.isNotBlank() && passwordInput.isNotBlank() && !isAnyLoading) {
+                                                        viewModel.signInWithUsername(usernameInput, passwordInput)
                                                     }
                                                 }
                                             ),
                                             cursorBrush = SolidColor(MyTuitionColors.PrimaryPurple),
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .onFocusChanged { isPhoneFocused = it.isFocused }
+                                                .onFocusChanged { isPasswordFocused = it.isFocused }
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { isPasswordVisible = !isPasswordVisible },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isPasswordVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                            contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
+                                            tint = if (isPasswordFocused) MyTuitionColors.PrimaryPurple else MyTuitionColors.TextTertiary
                                         )
                                     }
                                 }
                             }
 
-                            // Error message if any
+                            // Inline Error Message
                             val displayError = localErrorMessage ?: (state as? LoginUiState.Error)?.message
                             if (displayError != null) {
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(
                                     text = displayError,
                                     color = MyTuitionColors.StatusRed,
@@ -352,92 +428,85 @@ fun LoginScreen(
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium
                                     ),
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .offset(x = shakeOffset.value.dp),
                                     textAlign = TextAlign.Start
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                            // Send OTP Button: Proper full-width purple clay pill button with loading state
-                            val sendOtpSource = remember { MutableInteractionSource() }
-                            val isSendOtpPressed by sendOtpSource.collectIsPressedAsState()
-                            val sendOtpScale by animateFloatAsState(
-                                targetValue = if (isSendOtpPressed && !isAnyLoading) 0.97f else 1f,
-                                animationSpec = MyTuitionAnimations.claySpring,
-                                label = "sendOtpScale"
+                            // PRIMARY BUTTON: Purple Clay Pill "Login →" (56dp)
+                            val loginInteractionSource = remember { MutableInteractionSource() }
+                            val isLoginPressed by loginInteractionSource.collectIsPressedAsState()
+                            val loginScale by animateFloatAsState(
+                                targetValue = if (isLoginPressed && !isAnyLoading) 0.98f else 1f,
+                                animationSpec = MyTuitionAnimations.bounceSpring,
+                                label = "loginBtnScale"
                             )
+                            val isLoginLoading = state is LoginUiState.Loading && (state as LoginUiState.Loading).provider == AuthProvider.USERNAME
+                            val buttonCorner = RoundedCornerShape(28.dp)
 
                             Box(
                                 modifier = Modifier
-                                    .scale(sendOtpScale)
+                                    .scale(loginScale)
                                     .fillMaxWidth()
-                                    .height(52.dp)
+                                    .height(56.dp)
                                     .shadow(
-                                        elevation = if (isSendOtpPressed) 4.dp else 10.dp,
-                                        shape = RoundedCornerShape(28.dp),
+                                        elevation = if (isLoginPressed) 2.dp else 6.dp,
+                                        shape = buttonCorner,
                                         ambientColor = Color(0x336C48FF),
-                                        spotColor = Color(0x226C48FF)
+                                        spotColor = Color(0x286C48FF)
                                     )
-                                    .clip(RoundedCornerShape(28.dp))
-                                    .background(Color(0xFF6C48FF))
-                                    .border(2.dp, Color(0xFF5538CC), RoundedCornerShape(28.dp))
+                                    .clip(buttonCorner)
+                                    .background(MyTuitionColors.PrimaryPurple)
+                                    .border(2.dp, Color(0xFF5538CC), buttonCorner)
                                     .clickable(
-                                        interactionSource = sendOtpSource,
+                                        interactionSource = loginInteractionSource,
                                         indication = null,
-                                        enabled = !isAnyLoading,
-                                        onClick = {
-                                            focusManager.clearFocus()
-                                            if (phoneNumber.length < 10) {
-                                                localErrorMessage = "Please enter a valid 10-digit phone number"
-                                                coroutineScope.launch {
-                                                    for (i in 0..2) {
-                                                        shakeOffset.animateTo(12f, tween(50))
-                                                        shakeOffset.animateTo(-12f, tween(50))
-                                                    }
-                                                    shakeOffset.animateTo(0f, tween(50))
+                                        enabled = !isAnyLoading
+                                    ) {
+                                        focusManager.clearFocus()
+                                        if (usernameInput.isBlank()) {
+                                            localErrorMessage = "Please enter your username"
+                                            coroutineScope.launch {
+                                                for (i in 0..2) {
+                                                    shakeOffset.animateTo(10f, tween(50))
+                                                    shakeOffset.animateTo(-10f, tween(50))
                                                 }
-                                            } else {
-                                                isSendingOtp = true
-                                                coroutineScope.launch {
-                                                    delay(600)
-                                                    viewModel.enterDemoMode()
-                                                }
+                                                shakeOffset.animateTo(0f, tween(50))
                                             }
+                                        } else if (passwordInput.isBlank()) {
+                                            localErrorMessage = "Please enter your password"
+                                            coroutineScope.launch {
+                                                for (i in 0..2) {
+                                                    shakeOffset.animateTo(10f, tween(50))
+                                                }
+                                                shakeOffset.animateTo(0f, tween(50))
+                                            }
+                                        } else {
+                                            viewModel.signInWithUsername(usernameInput.trim(), passwordInput)
                                         }
-                                    ),
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (isSendingOtp) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            color = Color.White,
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.5.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = "Sending OTP...",
-                                            style = MyTuitionTypography.LabelLarge.copy(
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
-                                            )
-                                        )
-                                    }
+                                if (isLoginLoading) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.5.dp
+                                    )
                                 } else {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
                                         Text(
-                                            text = "Send OTP",
+                                            text = "Login",
                                             style = MyTuitionTypography.LabelLarge.copy(
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 17.sp,
+                                                fontWeight = FontWeight.Bold,
                                                 color = Color.White
                                             )
                                         )
@@ -446,15 +515,15 @@ fun LoginScreen(
                                             imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                                             contentDescription = null,
                                             tint = Color.White,
-                                            modifier = Modifier.size(18.dp)
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(18.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
 
-                            // Divider: thin line + "or continue with" + thin line
+                            // Divider: thin line + "or" + thin line
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
@@ -509,6 +578,20 @@ fun LoginScreen(
                                         viewModel.enterDemoMode()
                                     }
                                     .padding(vertical = 4.dp, horizontal = 8.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Teacher Demo Mode Button
+                            com.example.mytuition.core.designsystem.components.PillButton(
+                                text = "👨‍🏫 Try Teacher Demo Mode",
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    viewModel.enterTeacherDemoMode()
+                                },
+                                modifier = Modifier.fillMaxWidth(0.85f),
+                                variant = com.example.mytuition.core.designsystem.components.PillButtonVariant.Outline,
+                                enabled = !isAnyLoading
                             )
 
                             // 16dp spacing between Demo Mode and Sign Up
@@ -688,4 +771,9 @@ fun GoogleIconSvg(modifier: Modifier = Modifier) {
         }.build()
     }
     Icon(imageVector = vector, contentDescription = "Google", modifier = modifier, tint = Color.Unspecified)
+}
+
+enum class LoginTab {
+    PHONE_OTP,
+    USERNAME
 }

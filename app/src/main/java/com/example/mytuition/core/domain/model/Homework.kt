@@ -12,5 +12,6 @@ data class Homework(
     val dueAt: Long?,
     val status: HomeworkStatus,
     val teacherName: String,
-    val attachments: List<Resource>
+    val attachments: List<Resource>,
+    val isFromCache: Boolean = false
 )

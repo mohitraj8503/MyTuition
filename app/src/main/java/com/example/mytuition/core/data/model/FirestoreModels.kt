@@ -3,7 +3,6 @@ package com.example.mytuition.core.data.model
 import com.example.mytuition.core.designsystem.components.NextClassInfo
 import com.example.mytuition.core.designsystem.components.NextClassStatus
 import com.example.mytuition.core.domain.model.*
-import com.google.firebase.firestore.PropertyName
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -17,6 +16,7 @@ data class UserDoc(
     val photoUrl: String = "",
     val studentInfo: StudentInfoDoc? = null,
     val parentInfo: ParentInfoDoc? = null,
+    val teacherInfo: TeacherInfoDoc? = null,
     val fcmToken: String = "",
     val notificationPrefs: Map<String, Boolean> = emptyMap(),
     val isActive: Boolean = true,
@@ -35,7 +35,19 @@ data class UserDoc(
             photoUrl = photoUrl.ifEmpty { null },
             role = when (role.uppercase()) {
                 "PARENT" -> UserRole.PARENT
+                "TEACHER" -> UserRole.TEACHER
+                "ADMIN" -> UserRole.ADMIN
                 else -> UserRole.STUDENT
+            },
+            teacherId = teacherInfo?.teacherId ?: "",
+            teacherInfo = teacherInfo?.let {
+                TeacherInfo(
+                    teacherId = it.teacherId,
+                    subjects = it.subjects,
+                    batchIds = it.batches,
+                    qualification = it.qualification,
+                    experienceYears = it.experienceYears
+                )
             },
             batchIds = studentInfo?.batches ?: emptyList(),
             classGrade = studentInfo?.classGrade ?: "",
@@ -44,7 +56,7 @@ data class UserDoc(
             schoolName = studentInfo?.schoolName ?: "",
             accessToken = "firebase_token_$uid",
             refreshToken = null,
-            expiresAt = System.currentTimeMillis() + 86400000,
+            expiresAt = System.currentTimeMillis() + (24L * 3600L * 1000L),
             isDemo = false
         )
     }
@@ -66,6 +78,14 @@ data class ParentInfoDoc(
     val childUids: List<String> = emptyList(),
     val childStudentIds: List<String> = emptyList(),
     val relationship: String = "Father"
+)
+
+data class TeacherInfoDoc(
+    val teacherId: String = "",
+    val qualification: String = "",
+    val experienceYears: Int = 0,
+    val subjects: List<String> = emptyList(),
+    val batches: List<String> = emptyList()
 )
 
 data class InstituteDoc(

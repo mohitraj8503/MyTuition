@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -40,20 +41,16 @@ import com.example.mytuition.core.designsystem.PastelBackground
 import com.example.mytuition.core.designsystem.components.ClayCard
 import com.example.mytuition.core.designsystem.components.DateChip
 import com.example.mytuition.core.designsystem.components.FilterChipRow
+import com.example.mytuition.core.designsystem.components.OfflineBanner
 import com.example.mytuition.core.designsystem.darken
+import com.example.mytuition.core.di.AppContainer
+import com.example.mytuition.core.domain.model.HomeData
+import com.example.mytuition.core.domain.model.TimelineSessionItem
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
-data class CalendarDay(val dayName: String, val dayNumber: Int)
-
-data class CalendarEvent(
-    val id: String,
-    val title: String,
-    val teacher: String,
-    val time: String,
-    val location: String,
-    val dayNumber: Int,
-    val type: String, // "Class", "Exam"
-    val subjectColor: Color
-)
+data class CalendarDay(val dayName: String, val dayNumber: Int, val fullDate: String, val hasClasses: Boolean)
 
 enum class CalendarViewMode {
     WEEK,
@@ -62,121 +59,159 @@ enum class CalendarViewMode {
 
 @Composable
 fun CalendarScreen() {
+    val homeRepo = AppContainer.homeRepository
+    val coroutineScope = rememberCoroutineScope()
+
     var viewMode by remember { mutableStateOf(CalendarViewMode.MONTH) }
-    var selectedDayNumber by remember { mutableIntStateOf(12) }
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
-    var currentMonthIndex by remember { mutableIntStateOf(0) }
-    val months = listOf("November 2024", "December 2024")
 
-    val days = remember {
-        listOf(
-            CalendarDay("Mon", 8),
-            CalendarDay("Tue", 9),
-            CalendarDay("Wed", 10),
-            CalendarDay("Thu", 11),
-            CalendarDay("Fri", 12),
-            CalendarDay("Sat", 13),
-            CalendarDay("Sun", 14)
-        )
+    // Dynamic month calendar state
+    val calendarInstance = remember { Calendar.getInstance() }
+    var displayedCalendar by remember { mutableStateOf(Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1) }) }
+
+    val todayCalendar = remember { Calendar.getInstance() }
+    var selectedDateStr by remember {
+        mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
     }
 
-    val events = remember {
-        listOf(
-            CalendarEvent(
-                id = "e1",
-                title = "Physics — Electromagnetic Induction",
-                teacher = "Dr. Aalvina Fatehi",
-                time = "10:00 AM - 11:30 AM",
-                location = "Room 302",
-                dayNumber = 12,
-                type = "Class",
-                subjectColor = MyTuitionColors.SubjectPhysics
-            ),
-            CalendarEvent(
-                id = "e2",
-                title = "Mathematics Chapter Test",
-                teacher = "Prof. R. Sharma",
-                time = "01:00 PM - 02:30 PM",
-                location = "Exam Hall A",
-                dayNumber = 12,
-                type = "Exam",
-                subjectColor = MyTuitionColors.SubjectMath
-            ),
-            CalendarEvent(
-                id = "e3",
-                title = "Chemistry Doubt Session",
-                teacher = "Dr. S. K. Verma",
-                time = "04:30 PM - 05:30 PM",
-                location = "Google Meet",
-                dayNumber = 12,
-                type = "Class",
-                subjectColor = MyTuitionColors.SubjectChemistry
-            ),
-            CalendarEvent(
-                id = "e4",
-                title = "Biology Lab Experiment",
-                teacher = "Dr. Priya Patel",
-                time = "11:00 AM - 12:30 PM",
-                location = "Bio Lab 1",
-                dayNumber = 13,
-                type = "Class",
-                subjectColor = MyTuitionColors.SubjectBio
-            ),
-            CalendarEvent(
-                id = "e5",
-                title = "History — World War II",
-                teacher = "Prof. A. Mukherjee",
-                time = "02:00 PM - 03:30 PM",
-                location = "Room 105",
-                dayNumber = 14,
-                type = "Class",
-                subjectColor = MyTuitionColors.SubjectHistory
-            ),
-            CalendarEvent(
-                id = "e6",
-                title = "Creative Sketching & Design",
-                teacher = "Dr. Aalvina Fatehi",
-                time = "05:00 PM - 06:30 PM",
-                location = "Room 4B",
-                dayNumber = 17,
-                type = "Class",
-                subjectColor = Color(0xFF8E24AA)
-            ),
-            CalendarEvent(
-                id = "e7",
-                title = "English Grammar & Writing",
-                teacher = "Mrs. Sarah Jenkins",
-                time = "03:00 PM - 04:30 PM",
-                location = "Room 201",
-                dayNumber = 20,
-                type = "Class",
-                subjectColor = Color(0xFF2E7D32)
-            ),
-            CalendarEvent(
-                id = "e8",
-                title = "Science Monthly Assessment",
-                teacher = "Dr. Aalvina Fatehi",
-                time = "10:00 AM - 12:00 PM",
-                location = "Hall B",
-                dayNumber = 25,
-                type = "Exam",
-                subjectColor = MyTuitionColors.SubjectPhysics
-            )
-        )
+    var homeData by remember { mutableStateOf<HomeData?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // Month display string e.g. "September 2026"
+    val monthTitle = remember(displayedCalendar) {
+        SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(displayedCalendar.time)
     }
 
-    val eventDays = remember(events) { events.map { it.dayNumber }.toSet() }
+    // Days in current selected month
+    val daysInMonth = remember(displayedCalendar) {
+        displayedCalendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
 
+    // Offset for start of month (Sunday=0, Monday=1, ..., Saturday=6)
+    val startDayOffset = remember(displayedCalendar) {
+        val c = displayedCalendar.clone() as Calendar
+        c.set(Calendar.DAY_OF_MONTH, 1)
+        c.get(Calendar.DAY_OF_WEEK) - 1
+    }
+
+    // Fetch data whenever selectedDateStr changes
+    fun loadSchedule(targetDate: String) {
+        coroutineScope.launch {
+            isLoading = true
+            val result = homeRepo.getHomeData(targetDate)
+            homeData = result.getOrNull()
+            isLoading = false
+        }
+    }
+
+    LaunchedEffect(selectedDateStr) {
+        loadSchedule(selectedDateStr)
+    }
+
+    // Extract days with events from weekDates or today's session
+    val weekItems = homeData?.weekDates ?: emptyList()
+    val eventDays = remember(weekItems, displayedCalendar) {
+        val set = mutableSetOf<Int>()
+        val calMonth = displayedCalendar.get(Calendar.MONTH)
+        val calYear = displayedCalendar.get(Calendar.YEAR)
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+        weekItems.filter { it.hasClasses }.forEach { item ->
+            try {
+                val d = sdf.parse(item.date)
+                if (d != null) {
+                    val c = Calendar.getInstance().apply { time = d }
+                    if (c.get(Calendar.MONTH) == calMonth && c.get(Calendar.YEAR) == calYear) {
+                        set.add(c.get(Calendar.DAY_OF_MONTH))
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        // Also add the selected date if timeline has sessions
+        if ((homeData?.timeline?.isNotEmpty()) == true) {
+            try {
+                val d = sdf.parse(selectedDateStr)
+                if (d != null) {
+                    val c = Calendar.getInstance().apply { time = d }
+                    if (c.get(Calendar.MONTH) == calMonth && c.get(Calendar.YEAR) == calYear) {
+                        set.add(c.get(Calendar.DAY_OF_MONTH))
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        set
+    }
+
+    // Selected day number in current month
+    val selectedDayNumber = remember(selectedDateStr, displayedCalendar) {
+        try {
+            val d = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(selectedDateStr)
+            if (d != null) {
+                val c = Calendar.getInstance().apply { time = d }
+                if (c.get(Calendar.MONTH) == displayedCalendar.get(Calendar.MONTH) &&
+                    c.get(Calendar.YEAR) == displayedCalendar.get(Calendar.YEAR)) {
+                    c.get(Calendar.DAY_OF_MONTH)
+                } else {
+                    -1
+                }
+            } else -1
+        } catch (_: Exception) { -1 }
+    }
+
+    // Dynamic 7-day week strip derived from selectedDateStr
+    val weekDays = remember(weekItems, selectedDateStr) {
+        if (weekItems.isNotEmpty()) {
+            weekItems.map {
+                CalendarDay(
+                    dayName = it.dayAbbr,
+                    dayNumber = it.dayNumber.toIntOrNull() ?: 1,
+                    fullDate = it.date,
+                    hasClasses = it.hasClasses
+                )
+            }
+        } else {
+            // Fallback week derived dynamically from current week
+            val daysList = mutableListOf<CalendarDay>()
+            val c = Calendar.getInstance()
+            try {
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(selectedDateStr)?.let {
+                    c.time = it
+                }
+            } catch (_: Exception) {}
+            val curDow = c.get(Calendar.DAY_OF_WEEK)
+            val diffToMon = if (curDow == Calendar.SUNDAY) -6 else Calendar.MONDAY - curDow
+            c.add(Calendar.DAY_OF_MONTH, diffToMon)
+            val sdfFull = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdfDay = SimpleDateFormat("EEE", Locale.getDefault())
+            for (i in 0 until 7) {
+                daysList.add(
+                    CalendarDay(
+                        dayName = sdfDay.format(c.time),
+                        dayNumber = c.get(Calendar.DAY_OF_MONTH),
+                        fullDate = sdfFull.format(c.time),
+                        hasClasses = false
+                    )
+                )
+                c.add(Calendar.DAY_OF_MONTH, 1)
+            }
+            daysList
+        }
+    }
+
+    // Sessions for the day
+    val rawSessions = homeData?.timeline ?: emptyList()
     val filterOptions = listOf("All Sessions", "Classes Only", "Exams Only")
 
-    val filteredEvents = events.filter { event ->
-        val matchesDay = event.dayNumber == selectedDayNumber
-        val matchesType = when (selectedFilterIndex) {
-            1 -> event.type == "Class"
-            2 -> event.type == "Exam"
+    val filteredSessions = rawSessions.filter { session ->
+        val isExam = session.topic.contains("Test", ignoreCase = true) ||
+                     session.topic.contains("Exam", ignoreCase = true) ||
+                     session.subjectName.contains("Exam", ignoreCase = true)
+        when (selectedFilterIndex) {
+            1 -> !isExam
+            2 -> isExam
             else -> true
         }
-        matchesDay && matchesType
     }
 
     PastelBackground(modifier = Modifier.fillMaxSize()) {
@@ -204,7 +239,7 @@ fun CalendarScreen() {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = months[currentMonthIndex],
+                        text = monthTitle,
                         style = MyTuitionTypography.BodyMedium.copy(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -223,7 +258,12 @@ fun CalendarScreen() {
                             .background(MyTuitionColors.CardWhite)
                             .border(1.5.dp, MyTuitionColors.CardWhite.darken(0.08f), CircleShape)
                             .clickable {
-                                if (currentMonthIndex > 0) currentMonthIndex--
+                                val nextCal = displayedCalendar.clone() as Calendar
+                                nextCal.add(Calendar.MONTH, -1)
+                                displayedCalendar = nextCal
+                                val targetDay = if (selectedDayNumber > 0) selectedDayNumber.coerceAtMost(nextCal.getActualMaximum(Calendar.DAY_OF_MONTH)) else 1
+                                val dStr = String.format(Locale.getDefault(), "%04d-%02d-%02d", nextCal.get(Calendar.YEAR), nextCal.get(Calendar.MONTH) + 1, targetDay)
+                                selectedDateStr = dStr
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -243,7 +283,12 @@ fun CalendarScreen() {
                             .background(MyTuitionColors.CardWhite)
                             .border(1.5.dp, MyTuitionColors.CardWhite.darken(0.08f), CircleShape)
                             .clickable {
-                                if (currentMonthIndex < months.size - 1) currentMonthIndex++
+                                val nextCal = displayedCalendar.clone() as Calendar
+                                nextCal.add(Calendar.MONTH, 1)
+                                displayedCalendar = nextCal
+                                val targetDay = if (selectedDayNumber > 0) selectedDayNumber.coerceAtMost(nextCal.getActualMaximum(Calendar.DAY_OF_MONTH)) else 1
+                                val dStr = String.format(Locale.getDefault(), "%04d-%02d-%02d", nextCal.get(Calendar.YEAR), nextCal.get(Calendar.MONTH) + 1, targetDay)
+                                selectedDateStr = dStr
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -257,6 +302,13 @@ fun CalendarScreen() {
                 }
             }
 
+            // Offline banner if cached data
+            if (homeData?.isFromCache == true) {
+                Box(modifier = Modifier.padding(horizontal = MyTuitionSpacing.lg)) {
+                    OfflineBanner()
+                }
+            }
+
             // 2-Way View Mode Selector: "Month View" & "Week View"
             Row(
                 modifier = Modifier
@@ -264,7 +316,6 @@ fun CalendarScreen() {
                     .padding(horizontal = MyTuitionSpacing.lg, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Month View Tab
                 val isMonth = viewMode == CalendarViewMode.MONTH
                 Box(
                     modifier = Modifier
@@ -291,7 +342,6 @@ fun CalendarScreen() {
                     )
                 }
 
-                // Week View Tab
                 val isWeek = viewMode == CalendarViewMode.WEEK
                 Box(
                     modifier = Modifier
@@ -323,26 +373,30 @@ fun CalendarScreen() {
 
             // Calendar Display according to 2-Way mode
             if (viewMode == CalendarViewMode.MONTH) {
-                // Real Monthly Calendar Grid (Like a real physical/system calendar)
                 FullMonthCalendarGrid(
                     selectedDayNumber = selectedDayNumber,
+                    daysInMonth = daysInMonth,
+                    startDayOffset = startDayOffset,
                     eventDays = eventDays,
-                    onDayClick = { selectedDayNumber = it },
+                    onDayClick = { dayNum ->
+                        val dStr = String.format(Locale.getDefault(), "%04d-%02d-%02d", displayedCalendar.get(Calendar.YEAR), displayedCalendar.get(Calendar.MONTH) + 1, dayNum)
+                        selectedDateStr = dStr
+                    },
                     modifier = Modifier.padding(horizontal = MyTuitionSpacing.lg)
                 )
             } else {
-                // Horizontal scrolling Week strip view
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = MyTuitionSpacing.lg),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(days) { day ->
+                    items(weekDays) { day ->
+                        val isSelected = day.fullDate == selectedDateStr
                         DateChip(
                             dayAbbreviation = day.dayName,
                             dateNumber = day.dayNumber.toString(),
-                            isActive = day.dayNumber == selectedDayNumber,
-                            onClick = { selectedDayNumber = day.dayNumber }
+                            isActive = isSelected,
+                            onClick = { selectedDateStr = day.fullDate }
                         )
                     }
                 }
@@ -361,6 +415,13 @@ fun CalendarScreen() {
             Spacer(modifier = Modifier.height(14.dp))
 
             // Day label
+            val formattedDateLabel = remember(selectedDateStr) {
+                try {
+                    val d = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(selectedDateStr)
+                    if (d != null) SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault()).format(d) else selectedDateStr
+                } catch (_: Exception) { selectedDateStr }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -369,15 +430,15 @@ fun CalendarScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Sessions for Nov $selectedDayNumber",
+                    text = "Sessions for $formattedDateLabel",
                     style = MyTuitionTypography.TitleMedium.copy(
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MyTuitionColors.TextPrimary
                     )
                 )
                 Text(
-                    text = "${filteredEvents.size} scheduled",
+                    text = "${filteredSessions.size} scheduled",
                     style = MyTuitionTypography.LabelSmall.copy(
                         fontSize = 12.sp,
                         color = MyTuitionColors.TextSecondary
@@ -388,10 +449,22 @@ fun CalendarScreen() {
             Spacer(modifier = Modifier.height(8.dp))
 
             // Schedule timeline list
-            if (filteredEvents.isEmpty()) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MyTuitionColors.PrimaryPurple,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            } else if (filteredSessions.isEmpty()) {
                 ClayZeroState(
-                    title = "No Sessions on Nov $selectedDayNumber 🗓️",
-                    subtitle = "Tap any date with a dot to view scheduled classes and tests.",
+                    title = "No Sessions on $formattedDateLabel 🗓️",
+                    subtitle = "Tap any date with an indicator to view scheduled classes and tests.",
                     modifier = Modifier.padding(vertical = 24.dp)
                 )
             } else {
@@ -404,8 +477,8 @@ fun CalendarScreen() {
                     ),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(filteredEvents, key = { it.id }) { event ->
-                        CalendarScheduleCard(event = event)
+                    items(filteredSessions, key = { it.sessionId }) { session ->
+                        CalendarScheduleSessionCard(session = session)
                     }
                 }
             }
@@ -414,22 +487,18 @@ fun CalendarScreen() {
 }
 
 /**
- * Real Monthly Calendar Grid
- * Shows standard Sun, Mon, Tue, Wed, Thu, Fri, Sat columns
- * Days 1-30 formatted into 7-column rows with active day highlight & event indicators
+ * Dynamic Monthly Calendar Grid with Real Date Math
  */
 @Composable
 private fun FullMonthCalendarGrid(
     selectedDayNumber: Int,
+    daysInMonth: Int,
+    startDayOffset: Int,
     eventDays: Set<Int>,
     onDayClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dayOfWeekLabels = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-    // November 2024 starts on Friday (5 blank cells before 1st)
-    // 30 days total
-    val startDayOffset = 5 // Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5
-    val daysInMonth = 30
 
     ClayCard(
         modifier = modifier.fillMaxWidth(),
@@ -541,8 +610,8 @@ private fun FullMonthCalendarGrid(
 }
 
 @Composable
-private fun CalendarScheduleCard(
-    event: CalendarEvent,
+private fun CalendarScheduleSessionCard(
+    session: TimelineSessionItem,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -553,7 +622,12 @@ private fun CalendarScheduleCard(
         label = "calCardScale"
     )
 
-    val cardShape = RoundedCornerShape(28.dp)
+    val cardShape = RoundedCornerShape(24.dp)
+    val stripeColor = try {
+        Color(android.graphics.Color.parseColor(session.subjectIconColorHex))
+    } catch (_: Exception) {
+        MyTuitionColors.PrimaryPurple
+    }
 
     Box(
         modifier = modifier
@@ -563,54 +637,43 @@ private fun CalendarScheduleCard(
             }
             .fillMaxWidth()
             .shadow(
-                elevation = if (isPressed) 3.dp else 8.dp,
+                elevation = if (isPressed) 3.dp else 6.dp,
                 shape = cardShape,
-                ambientColor = Color(0x221A1A1A),
-                spotColor = Color(0x181A1A1A)
+                ambientColor = Color(0x181A1A1A),
+                spotColor = Color(0x121A1A1A)
             )
             .clip(cardShape)
             .background(MyTuitionColors.CardWhite)
             .border(2.dp, MyTuitionColors.CardWhite.darken(0.08f), cardShape)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {}
-            )
     ) {
-        // Inner bottom shadow
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(14.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.04f))
-                    )
-                )
-        )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left color stripe (5dp wide, rounded, colored by subject)
+            // Left color stripe
             Box(
                 modifier = Modifier
                     .width(5.dp)
-                    .height(64.dp)
+                    .height(60.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(event.subjectColor)
+                    .background(stripeColor)
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Time
+                val timeLabel = if (session.startTimeDisplay.isNotBlank() && session.endTimeDisplay.isNotBlank()) {
+                    "${session.startTimeDisplay} - ${session.endTimeDisplay}"
+                } else if (session.time.isNotBlank()) {
+                    session.time
+                } else {
+                    "Scheduled Session"
+                }
+
                 Text(
-                    text = event.time,
+                    text = timeLabel,
                     style = MyTuitionTypography.LabelMedium.copy(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
@@ -620,53 +683,52 @@ private fun CalendarScheduleCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Title
                 Text(
-                    text = event.title,
+                    text = session.subjectName.ifBlank { "Class Session" },
                     style = MyTuitionTypography.TitleMedium.copy(
-                        fontSize = 17.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = MyTuitionColors.TextPrimary
                     )
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Teacher
-                Text(
-                    text = event.teacher,
-                    style = MyTuitionTypography.BodyMedium.copy(
-                        fontSize = 14.sp,
-                        color = MyTuitionColors.TextSecondary
+                if (session.topic.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = session.topic,
+                        style = MyTuitionTypography.BodySmall.copy(
+                            fontSize = 13.sp,
+                            color = MyTuitionColors.TextSecondary
+                        )
                     )
-                )
+                }
+
+                if (session.teacherName.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Teacher: ${session.teacherName}",
+                        style = MyTuitionTypography.BodySmall.copy(
+                            fontSize = 12.sp,
+                            color = MyTuitionColors.TextTertiary
+                        )
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
-
-            // Room / Link badge
-            Box(
-                modifier = Modifier
-                    .shadow(2.dp, MyTuitionShapes.PillShape, spotColor = Color(0x12000000))
-                    .clip(MyTuitionShapes.PillShape)
-                    .background(MyTuitionColors.PrimaryPurpleLight)
-                    .border(1.5.dp, MyTuitionColors.PrimaryPurpleLight.darken(0.08f), MyTuitionShapes.PillShape)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (event.location.contains("Meet", ignoreCase = true)) {
-                        Icon(
-                            imageVector = Icons.Rounded.Videocam,
-                            contentDescription = null,
-                            tint = MyTuitionColors.PrimaryPurple,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(5.dp))
-                    }
+            if (session.roomName.isNotBlank()) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .shadow(2.dp, MyTuitionShapes.PillShape, spotColor = Color(0x12000000))
+                        .clip(MyTuitionShapes.PillShape)
+                        .background(MyTuitionColors.PrimaryPurpleLight)
+                        .border(1.5.dp, MyTuitionColors.PrimaryPurpleLight.darken(0.08f), MyTuitionShapes.PillShape)
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
                     Text(
-                        text = event.location,
+                        text = session.roomName,
                         style = MyTuitionTypography.LabelSmall.copy(
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = MyTuitionColors.PrimaryPurple
                         )

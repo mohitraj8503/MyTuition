@@ -47,14 +47,14 @@ enum class NextClassStatus {
 }
 
 data class NextClassInfo(
-    val id: String = "class_sketching",
-    val subjectName: String = "Creative Sketching",
-    val teacherName: String = "Dr. Aalvina Fatehi",
-    val timeText: String = "Today • 5:00 PM - 6:30 PM",
-    val countdownText: String = "Starts in 45 min",
-    val room: String = "Room 4B",
-    val floor: String = "2nd Floor, Arts Block",
-    val directionsNote: String = "Opposite Physics Lab • Next to Staircase B",
+    val id: String = "",
+    val subjectName: String = "Upcoming Class",
+    val teacherName: String = "",
+    val timeText: String = "",
+    val countdownText: String = "",
+    val room: String = "",
+    val floor: String = "",
+    val directionsNote: String = "",
     val status: NextClassStatus = NextClassStatus.UPCOMING,
     val statusNote: String = ""
 )
@@ -283,14 +283,16 @@ fun NextClassCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Teacher Name ("with Dr. Aalvina Fatehi")
-            Text(
-                text = "with ${info.teacherName}",
-                style = MyTuitionTypography.BodyMedium.copy(
-                    fontSize = 15.sp,
-                    color = MyTuitionColors.TextSecondary
+            // Teacher Name
+            if (info.teacherName.isNotBlank()) {
+                Text(
+                    text = "with ${info.teacherName}",
+                    style = MyTuitionTypography.BodyMedium.copy(
+                        fontSize = 15.sp,
+                        color = MyTuitionColors.TextSecondary
+                    )
                 )
-            )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 

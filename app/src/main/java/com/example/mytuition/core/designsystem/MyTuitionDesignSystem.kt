@@ -75,6 +75,10 @@ object MyTuitionColors {
     val StatusGreenDot      = Color(0xFF34C759)
     val OnlineGreen         = StatusGreen
 
+    val SuccessGreen        = StatusGreen
+    val ErrorRed            = StatusRed
+    val AccentGold          = StatusAmber
+
     // === DIFFICULTY / RATING DOTS ===
     val DifficultyDot       = Color(0xFFFFB340)
 }

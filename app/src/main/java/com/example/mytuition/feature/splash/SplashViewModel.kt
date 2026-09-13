@@ -9,8 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.example.mytuition.core.data.local.TokenManager
+
 class SplashViewModel(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val tokenManager: TokenManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SplashState>(SplashState.Loading)
@@ -24,19 +27,27 @@ class SplashViewModel(
         viewModelScope.launch {
             val session = authRepository.getCurrentSession()
             if (session != null) {
-                _uiState.value = SplashState.NavigateToHome
+                _uiState.value = SplashState.NavigateToHome(session.role)
             } else {
-                _uiState.value = SplashState.NavigateToLogin
+                val onboardingCompleted = tokenManager?.isOnboardingCompletedSync() ?: true
+                if (onboardingCompleted) {
+                    _uiState.value = SplashState.NavigateToLogin
+                } else {
+                    _uiState.value = SplashState.NavigateToOnboarding
+                }
             }
         }
     }
 
     companion object {
-        fun provideFactory(authRepository: AuthRepository): ViewModelProvider.Factory = 
+        fun provideFactory(
+            authRepository: AuthRepository,
+            tokenManager: TokenManager? = null
+        ): ViewModelProvider.Factory = 
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return SplashViewModel(authRepository) as T
+                    return SplashViewModel(authRepository, tokenManager) as T
                 }
             }
     }
@@ -44,7 +55,7 @@ class SplashViewModel(
 
 sealed interface SplashState {
     object Loading : SplashState
-    object NavigateToHome : SplashState
+    data class NavigateToHome(val role: com.example.mytuition.core.domain.model.UserRole = com.example.mytuition.core.domain.model.UserRole.STUDENT) : SplashState
     object NavigateToLogin : SplashState
     object NavigateToOnboarding : SplashState
 }

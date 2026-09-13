@@ -26,6 +26,7 @@ import com.example.mytuition.core.designsystem.PastelBackground
 import com.example.mytuition.core.designsystem.darken
 import com.example.mytuition.core.designsystem.components.FilterChipRow
 import com.example.mytuition.core.designsystem.components.HomeworkItemCard
+import com.example.mytuition.core.designsystem.components.OfflineBanner
 import com.example.mytuition.core.designsystem.components.ProgressRing
 import com.example.mytuition.core.di.AppContainer
 import com.example.mytuition.core.domain.model.Homework
@@ -103,6 +104,18 @@ fun HomeworkScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(MyTuitionSpacing.md)
             ) {
+                // Offline Banner if data is cached
+                val isFromCache = when (state) {
+                    is HomeworkUiState.Success -> (state as HomeworkUiState.Success).isFromCache
+                    is HomeworkUiState.Empty -> (state as HomeworkUiState.Empty).isFromCache
+                    else -> false
+                }
+                if (isFromCache) {
+                    item {
+                        OfflineBanner()
+                    }
+                }
+
                 // Overview Card
                 item {
                     OverviewCard(
@@ -158,17 +171,10 @@ fun HomeworkScreen(
                     }
                     is HomeworkUiState.Error -> {
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 40.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = uiState.message,
-                                    color = MyTuitionColors.StatusRed
-                                )
-                            }
+                            com.example.mytuition.core.designsystem.components.ErrorState(
+                                message = uiState.message,
+                                onRetry = { viewModel.loadHomework() }
+                            )
                         }
                     }
                     is HomeworkUiState.Success -> {
@@ -188,7 +194,7 @@ fun HomeworkScreen(
                             val isCompleted = homework.status == HomeworkStatus.COMPLETED
                             val isOverdue = homework.status == HomeworkStatus.OVERDUE
 
-                            val dueText = if (homework.dueAt != null) {
+                            val dueText = if (homework.dueAt != null && homework.dueAt > 0L) {
                                 val sdf = SimpleDateFormat("dd MMM, h:mm a", Locale.getDefault())
                                 "Due ${sdf.format(Date(homework.dueAt))}"
                             } else {

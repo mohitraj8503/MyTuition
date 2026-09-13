@@ -23,7 +23,10 @@ import kotlinx.coroutines.launch
 fun OnboardingScreen(
     onNavigateToLogin: () -> Unit,
     viewModel: OnboardingViewModel = viewModel(
-        factory = OnboardingViewModel.provideFactory(onComplete = onNavigateToLogin)
+        factory = OnboardingViewModel.provideFactory(
+            tokenManager = com.example.mytuition.core.di.AppContainer.tokenManager,
+            onComplete = onNavigateToLogin
+        )
     )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

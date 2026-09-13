@@ -9,12 +9,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.example.mytuition.core.data.local.TokenManager
+
 data class OnboardingUiState(
     val currentPage: Int = 0,   // 0, 1, 2
     val isNavigating: Boolean = false
 )
 
 class OnboardingViewModel(
+    private val tokenManager: TokenManager? = null,
     private val onCompleteCallback: () -> Unit = {}
 ) : ViewModel() {
 
@@ -41,15 +44,23 @@ class OnboardingViewModel(
 
     fun completeOnboarding() {
         _uiState.update { it.copy(isNavigating = true) }
-        onCompleteCallback()
+        viewModelScope.launch {
+            try {
+                tokenManager?.setOnboardingCompleted(true)
+            } catch (_: Exception) {}
+            onCompleteCallback()
+        }
     }
 
     companion object {
-        fun provideFactory(onComplete: () -> Unit = {}): ViewModelProvider.Factory =
+        fun provideFactory(
+            tokenManager: TokenManager? = null,
+            onComplete: () -> Unit = {}
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return OnboardingViewModel(onComplete) as T
+                    return OnboardingViewModel(tokenManager, onComplete) as T
                 }
             }
     }

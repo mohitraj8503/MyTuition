@@ -226,17 +226,20 @@ private fun HomeworkDetailContent(
                     )
                 )
 
-                if (homework.dueAt != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Due: ${dateFormat.format(Date(homework.dueAt))}",
-                        style = MyTuitionTypography.BodyMedium.copy(
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MyTuitionColors.TextPrimary
-                        )
-                    )
+                Spacer(modifier = Modifier.height(4.dp))
+                val dueText = if (homework.dueAt != null && homework.dueAt > 0L) {
+                    "Due: ${dateFormat.format(Date(homework.dueAt))}"
+                } else {
+                    "No due date"
                 }
+                Text(
+                    text = dueText,
+                    style = MyTuitionTypography.BodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (homework.dueAt != null && homework.dueAt > 0L) MyTuitionColors.TextPrimary else MyTuitionColors.TextSecondary
+                    )
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 

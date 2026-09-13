@@ -1,62 +1,74 @@
 package com.example.mytuition.core.di
 
-import com.example.mytuition.core.data.repository.FirebaseAuthRepository
-import com.example.mytuition.core.data.repository.FirebaseFeeRepository
-import com.example.mytuition.core.data.repository.FirebaseHomeworkRepository
-import com.example.mytuition.core.data.repository.FirebaseSubjectRepository
-import com.example.mytuition.core.data.repository.HomeRepository
+import android.content.Context
+import androidx.datastore.preferences.preferencesDataStore
+import com.example.mytuition.core.data.local.AppDatabase
+import com.example.mytuition.core.data.local.TokenManager
+import com.example.mytuition.core.data.network.PocketBaseApi
+import com.example.mytuition.core.data.network.PocketBaseClient
+import com.example.mytuition.core.data.repository.*
 import com.example.mytuition.core.domain.repository.AuthRepository
 import com.example.mytuition.core.domain.repository.FeeRepository
 import com.example.mytuition.core.domain.repository.HomeworkRepository
 import com.example.mytuition.core.domain.repository.SubjectRepository
-import com.example.mytuition.core.domain.usecase.GetHomeworkDetailUseCase
-import com.example.mytuition.core.domain.usecase.GetHomeworkListUseCase
-import com.example.mytuition.core.domain.usecase.GetSubjectDetailUseCase
-import com.example.mytuition.core.domain.usecase.GetSubjectsUseCase
-import com.example.mytuition.core.domain.usecase.MarkHomeworkCompleteUseCase
+import com.example.mytuition.core.domain.repository.TeacherRepository
+import com.example.mytuition.core.domain.usecase.*
+
+private val Context.dataStore by preferencesDataStore(name = "mytuition_prefs")
 
 object AppContainer {
-    val authRepository: AuthRepository by lazy {
-        FirebaseAuthRepository()
-    }
-    
-    val homeworkRepository: HomeworkRepository by lazy {
-        FirebaseHomeworkRepository()
-    }
 
-    val subjectRepository: SubjectRepository by lazy {
-        FirebaseSubjectRepository()
-    }
+    private lateinit var appContext: Context
+    lateinit var tokenManager: TokenManager
+        private set
+    private lateinit var database: AppDatabase
+    lateinit var pocketBaseApi: PocketBaseApi
+        private set
 
-    val homeRepository: HomeRepository by lazy {
-        HomeRepository()
-    }
+    lateinit var authRepository: AuthRepository
+        private set
+    lateinit var homeworkRepository: HomeworkRepository
+        private set
+    lateinit var subjectRepository: SubjectRepository
+        private set
+    lateinit var homeRepository: PocketBaseHomeRepository
+        private set
+    lateinit var feeRepository: FeeRepository
+        private set
+    lateinit var profileRepository: ProfileRepository
+        private set
+    lateinit var teacherRepository: TeacherRepository
+        private set
 
-    val feeRepository: FeeRepository by lazy {
-        FirebaseFeeRepository()
-    }
+    lateinit var getHomeworkListUseCase: GetHomeworkListUseCase
+        private set
+    lateinit var getHomeworkDetailUseCase: GetHomeworkDetailUseCase
+        private set
+    lateinit var markHomeworkCompleteUseCase: MarkHomeworkCompleteUseCase
+        private set
+    lateinit var getSubjectsUseCase: GetSubjectsUseCase
+        private set
+    lateinit var getSubjectDetailUseCase: GetSubjectDetailUseCase
+        private set
 
-    val profileRepository: com.example.mytuition.core.data.repository.ProfileRepository by lazy {
-        com.example.mytuition.core.data.repository.FirebaseProfileRepository()
-    }
+    fun init(context: Context) {
+        appContext = context.applicationContext
+        tokenManager = TokenManager(appContext.dataStore)
+        database = AppDatabase.getInstance(appContext)
+        pocketBaseApi = PocketBaseClient.create(tokenManager)
 
-    val getHomeworkListUseCase: GetHomeworkListUseCase by lazy {
-        GetHomeworkListUseCase(homeworkRepository)
-    }
+        authRepository = PocketBaseAuthRepository(pocketBaseApi, tokenManager)
+        homeworkRepository = PocketBaseHomeworkRepository(pocketBaseApi, tokenManager, database)
+        subjectRepository = PocketBaseSubjectRepository(pocketBaseApi, database)
+        homeRepository = PocketBaseHomeRepository(pocketBaseApi, tokenManager, database)
+        feeRepository = PocketBaseFeeRepository(pocketBaseApi)
+        profileRepository = PocketBaseProfileRepository(pocketBaseApi, tokenManager)
+        teacherRepository = PocketBaseTeacherRepository(pocketBaseApi)
 
-    val getHomeworkDetailUseCase: GetHomeworkDetailUseCase by lazy {
-        GetHomeworkDetailUseCase(homeworkRepository)
-    }
-
-    val markHomeworkCompleteUseCase: MarkHomeworkCompleteUseCase by lazy {
-        MarkHomeworkCompleteUseCase(homeworkRepository)
-    }
-
-    val getSubjectsUseCase: GetSubjectsUseCase by lazy {
-        GetSubjectsUseCase(subjectRepository)
-    }
-
-    val getSubjectDetailUseCase: GetSubjectDetailUseCase by lazy {
-        GetSubjectDetailUseCase(subjectRepository)
+        getHomeworkListUseCase = GetHomeworkListUseCase(homeworkRepository)
+        getHomeworkDetailUseCase = GetHomeworkDetailUseCase(homeworkRepository)
+        markHomeworkCompleteUseCase = MarkHomeworkCompleteUseCase(homeworkRepository)
+        getSubjectsUseCase = GetSubjectsUseCase(subjectRepository)
+        getSubjectDetailUseCase = GetSubjectDetailUseCase(subjectRepository)
     }
 }

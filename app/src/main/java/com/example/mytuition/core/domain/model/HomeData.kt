@@ -5,7 +5,7 @@ import com.example.mytuition.core.designsystem.components.NextClassInfo
 
 @Immutable
 data class WeekDayItem(
-    val date: String,          // "2025-08-17"
+    val date: String,          // "YYYY-MM-DD"
     val dayAbbr: String,      // "Mon"
     val dayNumber: String,    // "17"
     val hasClasses: Boolean
@@ -58,5 +58,6 @@ data class HomeData(
     val selectedDate: String,
     val timeline: List<TimelineSessionItem>,
     val summary: HomeSummary,
-    val announcements: List<AnnouncementItem>
+    val announcements: List<AnnouncementItem>,
+    val isFromCache: Boolean = false
 )

@@ -129,3 +129,101 @@ fun PillButton(
         }
     }
 }
+
+@Composable
+fun ErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .shadow(10.dp, shape = androidx.compose.foundation.shape.CircleShape, spotColor = Color(0x33FF5252))
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Color(0xFFFFEBEE))
+                    .border(2.dp, Color(0xFFFFCDD2), androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "⚠️", fontSize = 36.sp)
+            }
+            Spacer(modifier = Modifier.height(18.dp))
+            Text(
+                text = "Oops! Something went wrong",
+                style = MyTuitionTypography.TitleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MyTuitionColors.TextPrimary,
+                    fontSize = 18.sp
+                )
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = message,
+                style = MyTuitionTypography.BodyMedium.copy(
+                    color = MyTuitionColors.TextSecondary,
+                    fontSize = 14.sp
+                ),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            PillButton(
+                text = "Retry",
+                onClick = onRetry,
+                variant = PillButtonVariant.Primary
+            )
+        }
+    }
+}
+
+@Composable
+fun OfflineBanner(
+    modifier: Modifier = Modifier,
+    message: String = "Offline — showing saved data"
+) {
+    val bannerShape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .shadow(
+                elevation = 3.dp,
+                shape = bannerShape,
+                ambientColor = Color(0x18F59E0B),
+                spotColor = Color(0x22F59E0B)
+            )
+            .clip(bannerShape)
+            .background(Color(0xFFFFFBEB))
+            .border(1.5.dp, Color(0xFFFDE68A), bannerShape)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(text = "⚠️", fontSize = 14.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = message,
+                style = MyTuitionTypography.LabelMedium.copy(
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB45309)
+                )
+            )
+        }
+    }
+}
+

@@ -19,19 +19,32 @@ import com.example.mytuition.feature.subjects.SubjectDetailScreen
 fun AppNavGraph(
     navController: NavHostController = rememberNavController()
 ) {
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        com.example.mytuition.core.data.network.SessionEvents.sessionExpired.collect {
+            navController.navigate(Routes.Login) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Routes.Splash
     ) {
         composable(Routes.Splash) {
             SplashScreen(
-                onNavigateToHome = {
-                    navController.navigate(Routes.Home) {
+                onNavigateToHome = { role ->
+                    val destination = if (role == com.example.mytuition.core.domain.model.UserRole.TEACHER || role == com.example.mytuition.core.domain.model.UserRole.ADMIN) {
+                        Routes.TeacherHome
+                    } else {
+                        Routes.Home
+                    }
+                    navController.navigate(destination) {
                         popUpTo(Routes.Splash) { inclusive = true }
                     }
                 },
                 onNavigateToOnboarding = {
-                    navController.navigate(Routes.Login) {
+                    navController.navigate(Routes.Onboarding) {
                         popUpTo(Routes.Splash) { inclusive = true }
                     }
                 },
@@ -44,17 +57,24 @@ fun AppNavGraph(
         }
 
         composable(Routes.Onboarding) {
-            androidx.compose.runtime.LaunchedEffect(Unit) {
-                navController.navigate(Routes.Login) {
-                    popUpTo(Routes.Onboarding) { inclusive = true }
+            OnboardingScreen(
+                onNavigateToLogin = {
+                    navController.navigate(Routes.Login) {
+                        popUpTo(Routes.Onboarding) { inclusive = true }
+                    }
                 }
-            }
+            )
         }
         
         composable(Routes.Login) {
             LoginScreen(
-                onLoginSuccess = {
-                    navController.navigate(Routes.Home) {
+                onLoginSuccess = { role ->
+                    val destination = if (role == com.example.mytuition.core.domain.model.UserRole.TEACHER || role == com.example.mytuition.core.domain.model.UserRole.ADMIN) {
+                        Routes.TeacherHome
+                    } else {
+                        Routes.Home
+                    }
+                    navController.navigate(destination) {
                         popUpTo(Routes.Login) { inclusive = true }
                     }
                 }
@@ -118,6 +138,143 @@ fun AppNavGraph(
                 onNavigateToHomeworkDetail = { homeworkId ->
                     navController.navigate(Routes.homeworkDetailRoute(homeworkId))
                 }
+            )
+        }
+
+        // ==========================================
+        // TEACHER EXPERIENCES & SCREENS
+        // ==========================================
+        composable(Routes.TeacherHome) {
+            com.example.mytuition.feature.teacher.home.TeacherMainScreen(
+                onLogout = {
+                    navController.navigate(Routes.Login) {
+                        popUpTo(Routes.TeacherHome) { inclusive = true }
+                    }
+                },
+                onNavigateToAttendance = { sessionId ->
+                    navController.navigate(Routes.teacherAttendanceRoute(sessionId))
+                },
+                onNavigateToStudentProfile = { studentId ->
+                    navController.navigate(Routes.teacherStudentProfileRoute(studentId))
+                },
+                onNavigateToAddStudent = { batchId ->
+                    navController.navigate(Routes.teacherRegisterStudentRoute(batchId))
+                },
+                onNavigateToAnnouncements = {
+                    navController.navigate(Routes.TeacherAnnouncements)
+                },
+                onNavigateToCalendar = {
+                    navController.navigate(Routes.TeacherCalendar)
+                },
+                onNavigateToEarnings = {
+                    navController.navigate(Routes.TeacherEarnings)
+                },
+                onNavigateToHomeworkCreate = { batchId ->
+                    navController.navigate(Routes.teacherHomeworkCreateRoute(batchId))
+                },
+                onNavigateToHomeworkReview = { homeworkId ->
+                    navController.navigate(Routes.teacherHomeworkReviewRoute(homeworkId))
+                }
+            )
+        }
+
+        composable(
+            route = "${Routes.TeacherAttendance}/{sessionId}",
+            arguments = listOf(navArgument("sessionId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+            com.example.mytuition.feature.teacher.attendance.TeacherAttendanceScreen(
+                sessionId = sessionId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "${Routes.TeacherStudents}/{batchId}",
+            arguments = listOf(navArgument("batchId") {
+                type = NavType.StringType
+                defaultValue = "batch_10a_maths"
+            })
+        ) { backStackEntry ->
+            val batchId = backStackEntry.arguments?.getString("batchId") ?: "batch_10a_maths"
+            com.example.mytuition.feature.teacher.students.TeacherStudentsScreen(
+                batchId = batchId,
+                onBackClick = { navController.popBackStack() },
+                onNavigateToStudentProfile = { studentId ->
+                    navController.navigate(Routes.teacherStudentProfileRoute(studentId))
+                },
+                onNavigateToAddStudent = {
+                    navController.navigate(Routes.teacherRegisterStudentRoute(batchId))
+                }
+            )
+        }
+
+        composable(
+            route = "${Routes.TeacherStudentProfile}/{studentId}",
+            arguments = listOf(navArgument("studentId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val studentId = backStackEntry.arguments?.getString("studentId") ?: ""
+            com.example.mytuition.feature.teacher.students.TeacherStudentProfileScreen(
+                studentId = studentId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.TeacherRegisterStudent) {
+            com.example.mytuition.feature.teacher.students.register.RegisterStudentScreen(
+                batchId = null,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "${Routes.TeacherRegisterStudent}/{batchId}",
+            arguments = listOf(navArgument("batchId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val batchId = backStackEntry.arguments?.getString("batchId")
+            com.example.mytuition.feature.teacher.students.register.RegisterStudentScreen(
+                batchId = batchId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "${Routes.TeacherHomeworkCreate}/{batchId}",
+            arguments = listOf(navArgument("batchId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val batchId = backStackEntry.arguments?.getString("batchId") ?: "batch_10a_maths"
+            com.example.mytuition.feature.teacher.homework.TeacherHomeworkCreateScreen(
+                batchId = batchId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "${Routes.TeacherHomeworkReview}/{homeworkId}",
+            arguments = listOf(navArgument("homeworkId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val homeworkId = backStackEntry.arguments?.getString("homeworkId") ?: "hw_demo_1"
+            com.example.mytuition.feature.teacher.homework.TeacherHomeworkReviewScreen(
+                homeworkId = homeworkId,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.TeacherAnnouncements) {
+            com.example.mytuition.feature.teacher.announcements.TeacherAnnouncementsScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.TeacherCalendar) {
+            com.example.mytuition.feature.teacher.calendar.TeacherCalendarScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.TeacherEarnings) {
+            com.example.mytuition.feature.teacher.earnings.TeacherEarningsScreen(
+                onBackClick = { navController.popBackStack() }
             )
         }
     }

@@ -63,10 +63,11 @@ class HomeworkViewModel(
             HomeworkFilter.OVERDUE -> list.filter { it.status == HomeworkStatus.OVERDUE }
         }
 
+        val fromCache = list.any { it.isFromCache }
         if (filteredList.isEmpty()) {
-            _uiState.value = HomeworkUiState.Empty("No homework found for this filter.")
+            _uiState.value = HomeworkUiState.Empty("No homework found for this filter.", isFromCache = fromCache)
         } else {
-            _uiState.value = HomeworkUiState.Success(filteredList)
+            _uiState.value = HomeworkUiState.Success(filteredList, isFromCache = fromCache)
         }
     }
 
@@ -104,7 +105,7 @@ class HomeworkViewModel(
 
 sealed interface HomeworkUiState {
     object Loading : HomeworkUiState
-    data class Success(val homeworkList: List<Homework>) : HomeworkUiState
-    data class Empty(val message: String) : HomeworkUiState
+    data class Success(val homeworkList: List<Homework>, val isFromCache: Boolean = false) : HomeworkUiState
+    data class Empty(val message: String, val isFromCache: Boolean = false) : HomeworkUiState
     data class Error(val message: String) : HomeworkUiState
 }

@@ -25,11 +25,11 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    onNavigateToHome: () -> Unit,
+    onNavigateToHome: (com.example.mytuition.core.domain.model.UserRole) -> Unit,
     onNavigateToLogin: () -> Unit,
-    onNavigateToOnboarding: () -> Unit = onNavigateToLogin,
+    onNavigateToOnboarding: () -> Unit = {},
     viewModel: SplashViewModel = viewModel(
-        factory = SplashViewModel.provideFactory(AppContainer.authRepository)
+        factory = SplashViewModel.provideFactory(AppContainer.authRepository, AppContainer.tokenManager)
     )
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -39,9 +39,9 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         animationTriggered = true
         delay(1400) // allow splash animation to play smoothly
-        when (state) {
-            is SplashState.NavigateToHome -> onNavigateToHome()
-            is SplashState.NavigateToOnboarding -> onNavigateToLogin()
+        when (val s = state) {
+            is SplashState.NavigateToHome -> onNavigateToHome(s.role)
+            is SplashState.NavigateToOnboarding -> onNavigateToOnboarding()
             is SplashState.NavigateToLogin -> onNavigateToLogin()
             SplashState.Loading -> {
                 onNavigateToLogin()

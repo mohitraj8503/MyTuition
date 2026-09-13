@@ -21,6 +21,7 @@ import com.example.mytuition.core.designsystem.MyTuitionColors
 import com.example.mytuition.core.designsystem.MyTuitionSpacing
 import com.example.mytuition.core.designsystem.MyTuitionTypography
 import com.example.mytuition.core.designsystem.PastelBackground
+import com.example.mytuition.core.designsystem.components.OfflineBanner
 import com.example.mytuition.core.designsystem.components.SubjectCard
 import com.example.mytuition.core.di.AppContainer
 
@@ -65,6 +66,15 @@ fun SubjectsScreen(
                         color = MyTuitionColors.TextSecondary
                     )
                 )
+                val isCached = when (val uiState = state) {
+                    is SubjectsUiState.Success -> uiState.isFromCache
+                    is SubjectsUiState.Empty -> uiState.isFromCache
+                    else -> false
+                }
+                if (isCached) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OfflineBanner()
+                }
             }
 
             when (val uiState = state) {
@@ -84,12 +94,11 @@ fun SubjectsScreen(
                     )
                 }
                 is SubjectsUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = uiState.message,
-                            color = MyTuitionColors.StatusRed
-                        )
-                    }
+                    com.example.mytuition.core.designsystem.components.ErrorState(
+                        message = uiState.message,
+                        onRetry = { viewModel.loadSubjects() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 is SubjectsUiState.Success -> {
                     LazyVerticalGrid(

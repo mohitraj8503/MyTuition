@@ -130,24 +130,11 @@ fun ProfileScreen(
                     }
                 }
                 is ProfileUiState.Error -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = state.message,
-                                style = MyTuitionTypography.BodyLarge,
-                                color = MyTuitionColors.StatusRed
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadProfile() }) {
-                                Text("Retry")
-                            }
-                        }
-                    }
+                    com.example.mytuition.core.designsystem.components.ErrorState(
+                        message = state.message,
+                        onRetry = { viewModel.loadProfile() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
                 is ProfileUiState.Success -> {
                     val profile = state.profile
@@ -183,7 +170,14 @@ fun ProfileScreen(
                             AcademicDetailsCard(profile = profile)
                         }
 
-                        // 4. Settings & Options Card
+                        // 4. Attendance History Card (Claymorphic)
+                        if (profile.attendanceHistory.isNotEmpty()) {
+                            item {
+                                AttendanceHistoryCard(history = profile.attendanceHistory)
+                            }
+                        }
+
+                        // 5. Settings & Options Card
                         item {
                             SettingsCard(
                                 notificationsEnabled = profile.notificationsEnabled,
@@ -538,7 +532,106 @@ private fun AcademicDetailsCard(
             Spacer(modifier = Modifier.height(10.dp))
             InfoItemRow(label = "Phone Number", value = profile.phone)
             Spacer(modifier = Modifier.height(10.dp))
-            InfoItemRow(label = "Target Exams", value = "CBSE Board 2025 • JEE Foundation")
+            InfoItemRow(label = "Target Exams", value = "CBSE Board • Foundation")
+        }
+    }
+}
+
+@Composable
+private fun AttendanceHistoryCard(
+    history: List<com.example.mytuition.core.data.repository.AttendanceRecordItem>,
+    modifier: Modifier = Modifier
+) {
+    ClayCard(
+        modifier = modifier.fillMaxWidth(),
+        cornerRadius = 28.dp,
+        elevation = 8.dp
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(MyTuitionColors.SubjectPhysics.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.EventAvailable,
+                        contentDescription = null,
+                        tint = MyTuitionColors.SubjectPhysics,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    text = "Attendance History",
+                    style = MyTuitionTypography.TitleMedium.copy(
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MyTuitionColors.TextPrimary
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            history.take(6).forEachIndexed { index, record ->
+                val (pillBg, pillText, textColor) = when (record.status.uppercase()) {
+                    "PRESENT" -> Triple(Color(0xFFE8F5E9), "Present", Color(0xFF2E7D32))
+                    "LATE" -> Triple(Color(0xFFFFF8E1), "Late", Color(0xFFF57F17))
+                    "EXCUSED" -> Triple(Color(0xFFF5F5F5), "Excused", Color(0xFF616161))
+                    else -> Triple(Color(0xFFFFEBEE), "Absent", Color(0xFFC62828))
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = record.date,
+                            style = MyTuitionTypography.BodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = MyTuitionColors.TextPrimary,
+                                fontSize = 14.sp
+                            )
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(pillBg)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = pillText,
+                            style = MyTuitionTypography.LabelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = textColor,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+
+                if (index < history.take(6).lastIndex) {
+                    HorizontalDivider(
+                        color = MyTuitionColors.CardWhite.darken(0.06f),
+                        thickness = 1.dp,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+                }
+            }
         }
     }
 }

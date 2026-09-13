@@ -27,10 +27,11 @@ class SubjectsViewModel(
             val result = getSubjectsUseCase()
             if (result.isSuccess) {
                 val list = result.getOrNull() ?: emptyList()
+                val fromCache = list.any { it.isFromCache }
                 if (list.isEmpty()) {
-                    _uiState.value = SubjectsUiState.Empty("No subjects found.")
+                    _uiState.value = SubjectsUiState.Empty("No subjects found.", isFromCache = fromCache)
                 } else {
-                    _uiState.value = SubjectsUiState.Success(list)
+                    _uiState.value = SubjectsUiState.Success(list, isFromCache = fromCache)
                 }
             } else {
                 _uiState.value = SubjectsUiState.Error(result.exceptionOrNull()?.message ?: "Failed to load subjects")
@@ -51,7 +52,7 @@ class SubjectsViewModel(
 
 sealed interface SubjectsUiState {
     object Loading : SubjectsUiState
-    data class Success(val subjects: List<Subject>) : SubjectsUiState
-    data class Empty(val message: String) : SubjectsUiState
+    data class Success(val subjects: List<Subject>, val isFromCache: Boolean = false) : SubjectsUiState
+    data class Empty(val message: String, val isFromCache: Boolean = false) : SubjectsUiState
     data class Error(val message: String) : SubjectsUiState
 }

@@ -446,7 +446,11 @@ private fun HomeworkTabContent(
         ) {
             items(homeworkList) { homework ->
                 val sdf = SimpleDateFormat("dd MMM", Locale.getDefault())
-                val dueText = homework.dueAt?.let { "Due ${sdf.format(Date(it))}" } ?: "No deadline"
+                val dueText = if (homework.dueAt != null && homework.dueAt > 0L) {
+                    "Due ${sdf.format(Date(homework.dueAt))}"
+                } else {
+                    "No deadline"
+                }
 
                 HomeworkItemCard(
                     subjectTag = homework.subjectName,

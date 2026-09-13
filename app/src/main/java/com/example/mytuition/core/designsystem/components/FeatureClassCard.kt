@@ -35,10 +35,10 @@ import com.example.mytuition.core.designsystem.MyTuitionTypography
 
 @Composable
 fun FeatureClassCard(
-    status: String = "Live in 1 hour",
+    status: String = "Upcoming",
     statusColor: Color = MyTuitionColors.StatusGreen,
-    title: String = "Creative Sketching",
-    subtitle: String = "Batch OOV 021",
+    title: String = "Upcoming Class",
+    subtitle: String = "",
     progressLabel: String = "Your Progress",
     progressPercent: Int = 60,
     buttonLabel: String = "Join Class",
@@ -140,7 +140,7 @@ fun FeatureClassCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Title "Creative Sketching" (TitleExtra 24sp ExtraBold)
+            // Title (TitleExtra 24sp ExtraBold)
             Text(
                 text = title,
                 style = MyTuitionTypography.TitleExtra.copy(

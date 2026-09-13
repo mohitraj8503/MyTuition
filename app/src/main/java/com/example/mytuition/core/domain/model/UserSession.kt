@@ -18,5 +18,17 @@ data class UserSession(
     val accessToken: String? = null,
     val refreshToken: String? = null,
     val expiresAt: Long? = null,
-    val isDemo: Boolean = false
+    val isDemo: Boolean = false,
+    val teacherId: String = "",
+    val teacherInfo: TeacherInfo? = null
+) {
+    val isStaff: Boolean get() = role == UserRole.TEACHER || role == UserRole.ADMIN
+}
+
+data class TeacherInfo(
+    val teacherId: String = "",
+    val subjects: List<String> = emptyList(),
+    val batchIds: List<String> = emptyList(),
+    val qualification: String = "",
+    val experienceYears: Int = 0
 )

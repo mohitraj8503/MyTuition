@@ -10,5 +10,6 @@ data class Subject(
     val teacherAvatarUrl: String?,
     val homeworkCount: Int,
     val resourceCount: Int,
-    val nextClass: Long?
+    val nextClass: Long?,
+    val isFromCache: Boolean = false
 )

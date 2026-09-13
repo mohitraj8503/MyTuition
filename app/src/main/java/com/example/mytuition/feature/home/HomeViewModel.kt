@@ -9,7 +9,6 @@ import com.example.mytuition.core.domain.model.TimelineSessionItem
 import com.example.mytuition.core.domain.model.WeekDayItem
 import com.example.mytuition.core.designsystem.components.NextClassInfo
 import com.example.mytuition.core.domain.repository.AuthRepository
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +25,7 @@ sealed interface HomeUiState {
         val nextClass: NextClassInfo? get() = data.nextClass
         val weekDates: List<WeekDayItem> get() = data.weekDates
         val timeline: List<TimelineSessionItem> get() = data.timeline
+        val isFromCache: Boolean get() = data.isFromCache
     }
     data class Error(val message: String) : HomeUiState
 }
@@ -38,8 +38,7 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private var timelineListener: ListenerRegistration? = null
-    private var currentDate: String = "2025-08-17"
+    private var currentDate: String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
 
     init {
         loadHomeData(currentDate)
@@ -52,7 +51,6 @@ class HomeViewModel(
             val result = homeRepository.getHomeData(date)
             result.onSuccess { data ->
                 _uiState.value = HomeUiState.Success(data)
-                listenToTimelineUpdates(date)
             }.onFailure { error ->
                 _uiState.value = HomeUiState.Error(
                     error.localizedMessage ?: "Failed to load tuition schedule. Please retry."
@@ -66,28 +64,11 @@ class HomeViewModel(
         loadHomeData(date)
     }
 
-    private fun listenToTimelineUpdates(date: String) {
-        timelineListener?.remove()
-        timelineListener = homeRepository.observeTimeline(date) { updatedTimeline ->
-            val current = _uiState.value
-            if (current is HomeUiState.Success) {
-                val updatedData = current.data.copy(timeline = updatedTimeline)
-                _uiState.value = HomeUiState.Success(updatedData)
-            }
-        }
-    }
-
     fun logout(onLogoutSuccess: () -> Unit) {
         viewModelScope.launch {
-            timelineListener?.remove()
             authRepository.logout()
             onLogoutSuccess()
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        timelineListener?.remove()
     }
 
     companion object {

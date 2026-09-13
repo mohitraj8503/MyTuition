@@ -5,25 +5,20 @@ import coil.Coil
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-import com.example.mytuition.core.data.FirebaseConfig
+import com.example.mytuition.core.di.AppContainer
 import com.example.mytuition.core.security.AppGuard
-import com.google.firebase.firestore.FirebaseFirestoreSettings
 
 class MyTuitionApp : Application() {
     override fun onCreate() {
         super.onCreate()
         // Anti-tamper check — must be FIRST
         AppGuard.init(this)
-        FirebaseConfig.ensureInitialized(this)
-        try {
-            val settings = FirebaseFirestoreSettings.Builder()
-                .setPersistenceEnabled(true)
-                .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
-                .build()
-            FirebaseConfig.db.firestoreSettings = settings
-        } catch (_: Exception) {
-            // Settings already applied or cached
-        }
+
+        // Initialize DI AppContainer with PocketBase & Local Cache
+        AppContainer.init(this)
+
+        // Initialize OneSignal push notification system
+        com.example.mytuition.core.notifications.OneSignalHelper.init(this)
 
         // Global High-Performance Coil ImageLoader
         try {
@@ -46,4 +41,3 @@ class MyTuitionApp : Application() {
         }
     }
 }
-

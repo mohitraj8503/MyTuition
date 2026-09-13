@@ -48,43 +48,216 @@ Students track daily schedules, homework, attendance, and fees — all in one pl
 - **Offline-first** — Firestore offline persistence — works without internet
 - **Firebase Auth** — Phone OTP + Google Sign-In
 - **Cloud Functions** — Razorpay payment integration via Firebase Functions (asia-south1)
-- **Clean Architecture** — MVVM + Repository pattern + Hilt-ready DI container
+- **Clean Architecture** — MVVM + Repository pattern + Use Cases + DI container
+- **High Refresh Rate & 60/90/120Hz** — Hardware-accelerated animations with `Modifier.graphicsLayer` and pre-rendered canvas gradient caches
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture & Data Flow
+
+MyTuition strictly follows **Google's Recommended Modern Android Architecture (Clean Architecture + MVVM + Unidirectional Data Flow)**.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                   PRESENTATION LAYER                             │
+│  Jetpack Compose Screens  ──(StateFlow / Events)──► ViewModels   │
+└─────────────────────────────────┬────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                      DOMAIN LAYER                                │
+│   Use Cases / Interactors  ──►  Domain Models  ──►  Interfaces   │
+└─────────────────────────────────┬────────────────────────────────┘
+                                  │
+                                  ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                       DATA LAYER                                 │
+│  Repository Implementations ──► Firestore / Local Cache / Cloud  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### 1. High-Level Architectural Flow
+
+```mermaid
+flowchart TD
+    subgraph UI ["📱 Presentation Layer (Jetpack Compose)"]
+        A[LoginScreen]
+        B[HomeScreen]
+        C[HomeworkScreen]
+        D[SubjectsScreen]
+        E[CalendarScreen]
+        F[ProfileScreen]
+    end
+
+    subgraph VM ["🧠 ViewModel Layer (MVVM)"]
+        VA[LoginViewModel]
+        VB[HomeViewModel]
+        VC[HomeworkViewModel]
+        VD[SubjectDetailViewModel]
+        VE[ProfileViewModel]
+    end
+
+    subgraph Domain ["⚙️ Domain Layer (Use Cases & Contracts)"]
+        UC1[GetHomeworkListUseCase]
+        UC2[MarkHomeworkCompleteUseCase]
+        UC3[GetSubjectsUseCase]
+        UC4[GetSubjectDetailUseCase]
+        R_INT[Repository Interfaces]
+    end
+
+    subgraph DI ["📦 Dependency Injection"]
+        AC[AppContainer Singleton]
+    end
+
+    subgraph Data ["💾 Data Layer (Repositories & Network)"]
+        R1[FirebaseAuthRepository]
+        R2[HomeRepository]
+        R3[FirebaseHomeworkRepository]
+        R4[FirebaseSubjectRepository]
+        R5[FirebaseFeeRepository]
+        R6[FirebaseProfileRepository]
+    end
+
+    subgraph Backend ["☁️ Cloud & Services"]
+        FB_AUTH[(Firebase Auth)]
+        FIRESTORE[(Cloud Firestore)]
+        FC[Cloud Functions]
+        RZP[Razorpay Gateway]
+        DEMO[Offline Demo Engine]
+    end
+
+    UI -->|User Events| VM
+    VM -->|StateFlow / UiState| UI
+    VM -->|Invokes| Domain
+    Domain -->|Calls| R_INT
+    DI -.->|Injects Dependencies| VM
+    DI -.->|Provides Instances| Data
+    R_INT -.->|Implemented By| Data
+
+    R1 --> FB_AUTH & DEMO
+    R2 --> FIRESTORE & DEMO
+    R3 --> FIRESTORE & DEMO
+    R4 --> FIRESTORE & DEMO
+    R5 --> FC & RZP & DEMO
+    R6 --> FIRESTORE & DEMO
+```
+
+---
+
+### 2. User Authentication & Demo Mode Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as 🧑‍🎓 Student
+    participant UI as LoginScreen
+    participant VM as LoginViewModel
+    participant Repo as FirebaseAuthRepository
+    participant FB as Firebase Auth / Phone Provider
+    participant Demo as Offline Demo Store
+
+    alt Real Authentication (Phone OTP / Google)
+        Student->>UI: Enters Phone Number / Taps Google
+        UI->>VM: sendOtp(phone) / signInWithGoogle()
+        VM->>Repo: requestOtp(phone)
+        Repo->>FB: verifyPhoneNumber()
+        FB-->>Student: SMS OTP Sent
+        Student->>UI: Enters 6-Digit OTP
+        UI->>VM: verifyOtp(otp)
+        Repo->>FB: signInWithCredential()
+        FB-->>Repo: FirebaseUser (Auth Success)
+        Repo-->>VM: UserSession(uid, token, isDemo=false)
+        VM-->>UI: Navigate to Home Screen
+    else Instant Demo Mode (Offline-First)
+        Student->>UI: Taps "Try demo mode →"
+        UI->>VM: enterDemoMode()
+        VM->>Repo: setDemoSession()
+        Repo->>Demo: Load Mohit Raj profile & mock token
+        Demo-->>Repo: UserSession(uid="demo_student_01", isDemo=true)
+        Repo-->>VM: Demo Session Activated
+        VM-->>UI: Instant Navigate to Home Screen (Zero Network Needed)
+    end
+```
+
+---
+
+### 3. Real-Time Schedule & Homework Sync Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as 🧑‍🎓 Student
+    participant HomeUI as HomeScreen
+    participant HomeVM as HomeViewModel
+    participant HWUI as HomeworkScreen
+    participant HWVM as HomeworkViewModel
+    participant UseCase as MarkHomeworkCompleteUseCase
+    participant HWRepo as FirebaseHomeworkRepository
+    participant Firestore as Cloud Firestore (with Offline Cache)
+
+    Student->>HomeUI: Opens App
+    HomeUI->>HomeVM: Observes homeState
+    HomeVM->>Firestore: Listen to classes/today & homework/pending
+    Firestore-->>HomeVM: Emit Snapshot (or Offline Disk Cache)
+    HomeVM-->>HomeUI: Render NextClassCard (Countdown) + Timeline
+
+    Student->>HWUI: Switches to Homework Tab
+    HWUI->>HWVM: Filter by Status / Subject
+    HWVM-->>HWUI: Display Homework Cards (Maths, Physics, etc.)
+
+    Student->>HWUI: Swipes / Taps "Mark Completed"
+    HWUI->>HWVM: markComplete(homeworkId)
+    HWVM->>UseCase: execute(homeworkId)
+    UseCase->>HWRepo: markComplete(homeworkId)
+    HWRepo->>Firestore: updateDoc(status: "COMPLETED", completedAt: timestamp)
+    Note over HWRepo,Firestore: Optimistic local update via Firestore persistence
+    Firestore-->>HomeVM: Real-time listener triggers auto-update
+    HomeVM-->>HomeUI: Pending count decrements instantly!
+```
+
+---
+
+### 4. Directory & Module Structure
 
 ```
 MyTuition/
 ├── app/src/main/java/com/example/mytuition/
 │   ├── core/
 │   │   ├── data/
-│   │   │   ├── model/          # Firestore document models + mappers
-│   │   │   ├── repository/     # Firebase repository implementations
-│   │   │   └── FirebaseConfig  # Firebase singleton setup
-│   │   ├── designsystem/       # Claymorphic design tokens + components
-│   │   │   └── components/     # NextClassCard, ShortcutRow, FeeStatusBottomSheet…
-│   │   ├── di/                 # AppContainer (dependency injection)
+│   │   │   ├── model/          # Firestore document models + DTO mappers
+│   │   │   ├── repository/     # Concrete repository implementations:
+│   │   │   │                   # - FirebaseAuthRepository.kt
+│   │   │   │                   # - HomeRepository.kt
+│   │   │   │                   # - FirebaseHomeworkRepository.kt
+│   │   │   │                   # - FirebaseSubjectRepository.kt
+│   │   │   │                   # - FirebaseFeeRepository.kt
+│   │   │   │                   # - FirebaseProfileRepository.kt
+│   │   │   │                   # - MockData.kt (Demo data source)
+│   │   │   └── FirebaseConfig  # Offline persistence & Firestore caching config
+│   │   ├── designsystem/       # Claymorphic tokens, double shadows & components
+│   │   │   ├── components/     # ClayCard, TimelineCard, BottomNav, ProgressRing…
+│   │   │   └── PastelBackground.kt # GPU-cached offscreen gradient bitmap
+│   │   ├── di/                 # AppContainer (Single source of truth DI)
 │   │   ├── domain/
-│   │   │   ├── model/          # UserSession, HomeData, FeeStatus, HomeSummary…
-│   │   │   └── repository/     # Repository interfaces
-│   │   └── navigation/         # AppNavGraph + Routes
+│   │   │   ├── model/          # Pure domain models (HomeData, Homework, Subject…)
+│   │   │   ├── repository/     # Clean repository interfaces
+│   │   │   └── usecase/        # Granular single-responsibility Use Cases
+│   │   ├── navigation/         # AppNavGraph, Routes & deep links
+│   │   └── security/           # AppGuard anti-tamper, signature & root checks
 │   └── feature/
-│       ├── auth/               # Login (Phone OTP + Google + Demo Mode)
-│       ├── home/               # HomeScreen + HomeViewModel
-│       ├── homework/           # HomeworkScreen + HomeworkViewModel
-│       ├── classdetail/        # Class Detail Screen
-│       ├── subjects/           # Subject List + Subject Detail
-│       ├── calendar/           # Calendar Screen
-│       └── profile/            # Profile Screen
-├── functions/                  # Firebase Cloud Functions (TypeScript)
+│       ├── auth/               # Phone OTP, Google Sign-In & Demo mode entry
+│       ├── splash/             # Startup animated splash screen
+│       ├── home/               # Next Class Card, Schedule Timeline, Quick Stats
+│       ├── homework/           # Filterable homework list, detail & status toggle
+│       ├── subjects/           # Enrolled subjects grid & chapter progress
+│       ├── calendar/           # 2-way monthly & daily schedule calendar
+│       └── profile/            # Student ID Hero Card, Academic Info & Settings
+├── functions/                  # Firebase Cloud Functions (TypeScript, Node 20)
 │   └── src/
-│       ├── index.ts            # 11 callable functions
-│       └── seed.ts             # Firestore seed script
-└── firestore.rules             # Role-based security rules
+│       ├── index.ts            # 11 callable functions (Razorpay, aggregators, FCM)
+│       └── seed.ts             # Firestore database seeding script
+└── firestore.rules             # Role-based security rules (student/parent/admin)
 ```
-
-**Pattern:** `UI (Compose) → ViewModel → Repository → Firestore/Firebase`
 
 ---
 
@@ -103,7 +276,7 @@ cd MyTuition
 
 ### 2. Firebase Setup (optional — skip to use Demo Mode)
 1. Create a project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Add Android app with package `com.aistudio.mytuition.abxycd`
+2. Add Android app with package `com.mytuition.app`
 3. Download `google-services.json` → place in `app/`
 4. Enable **Authentication** (Phone + Anonymous)
 5. Enable **Firestore** in asia-south1 region

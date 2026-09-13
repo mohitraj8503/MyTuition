@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="art/logo.png" width="120" alt="MyTuition Logo"/>
+<img src="art/logo_rounded_white.png" width="130" style="border-radius: 20px; background-color: #ffffff; padding: 6px;" alt="MyTuition Logo"/>
 
 # MyTuition
 ### Your offline tuition coaching companion

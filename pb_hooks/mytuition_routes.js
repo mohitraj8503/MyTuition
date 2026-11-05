@@ -1,6 +1,13 @@
 /// <reference path="../pb_data/types.d.ts" />
 
 // ==========================================
+// Generate a random temporary student password
+// ==========================================
+function generateStudentPassword() {
+    return $security.randomString(12)
+}
+
+// ==========================================
 // 1. REGISTER STUDENT (Teacher Gatekeeper)
 // POST /api/mytuition/register-student
 // ==========================================
@@ -28,16 +35,32 @@ routerAdd("POST", "/api/mytuition/register-student", (c) => {
         return c.json(400, { error: "Batch selection is required" })
     }
     
-    // Retrieve institute
-    let instituteRecord = null
-    try {
-        const batch = $app.findRecordById("batches", batchId)
-        const instId = batch.get("institute") || authRecord.get("institute")
-        if (instId) {
-            instituteRecord = $app.findRecordById("institutes", instId)
-        }
-    } catch (_) {}
-    
+    // Validate batch and institute ownership
+let batchRecord = null
+let instituteRecord = null
+
+try {
+    batchRecord = $app.findRecordById("batches", batchId)
+} catch (_) {
+    return c.json(404, { error: "Selected batch was not found" })
+}
+
+const teacherInstituteId = authRecord.get("institute")
+const batchInstituteId = batchRecord.get("institute")
+
+if (!teacherInstituteId || !batchInstituteId) {
+    return c.json(403, { error: "Batch or teacher institute is not configured" })
+}
+
+if (teacherInstituteId !== batchInstituteId) {
+    return c.json(403, { error: "You cannot register students in another institute's batch" })
+}
+
+try {
+    instituteRecord = $app.findRecordById("institutes", batchInstituteId)
+} catch (_) {
+    return c.json(404, { error: "Institute record was not found" })
+}
     const shortName = instituteRecord?.get("shortName") || "chanakya"
     
     // Auto-generate username with collision detection
@@ -61,13 +84,13 @@ routerAdd("POST", "/api/mytuition/register-student", (c) => {
     
     // Generate simple memorable password
     const firstName = name.split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 8)
-    const password = customPassword || `${firstName}@123`
-    
+    const password = customPassword || generateStudentPassword()
     // Create student user record in users auth collection
     const usersCol = $app.findCollectionByNameOrId("users")
     const student = new Record(usersCol)
     student.setUsername(candidateUsername)
     student.setPassword(password)
+    student.set("initialPassword", password)
     student.set("name", name)
     student.set("role", "STUDENT")
     student.set("phone", phone)
@@ -76,7 +99,6 @@ routerAdd("POST", "/api/mytuition/register-student", (c) => {
     student.set("batches", [batchId])
     student.set("primaryBatch", batchId)
     student.set("registeredBy", authRecord.getId())
-    student.set("initialPassword", password) // Teacher vault entry
     student.set("rollNumber", rollNumber)
     student.set("isActive", true)
     
@@ -116,15 +138,15 @@ routerAdd("POST", "/api/mytuition/register-student", (c) => {
         batchName = $app.findRecordById("batches", batchId).get("name")
     } catch (_) {}
 
-    // Send OneSignal push notification if parent notification requested
-    if (notifyParent) {
-        sendOneSignalNotification(
-            [student.getId()],
-            `Welcome to ${instituteRecord?.get("name") || "MyTuition"}!`,
-            `Your student account is created. Username: ${candidateUsername}, Password: ${password}`,
-            { type: "STUDENT_CREDENTIALS", username: candidateUsername, password: password }
-        )
-    }
+    // Send a password-free account creation notification
+if (notifyParent) {
+    sendOneSignalNotification(
+        [student.getId()],
+        `Welcome to ${instituteRecord.get("name") || "MyTuition"}!`,
+        "Your student account has been created. Please contact your teacher for login assistance.",
+        { type: "STUDENT_ACCOUNT_CREATED" }
+    )
+}
     
     return c.json(200, {
         studentUid: student.getId(),
@@ -142,17 +164,16 @@ routerAdd("POST", "/api/mytuition/register-student", (c) => {
 routerAdd("GET", "/api/mytuition/home-data", (c) => {
     const authRecord = c.get("authRecord")
     if (!authRecord) return c.json(401, { error: "Unauthorized" })
-    
+
     const date = c.queryParam("date") || new Date().toISOString().split("T")[0]
     const role = (authRecord.get("role") || "STUDENT").toUpperCase()
-    
+
     if (role === "STUDENT") {
         return c.json(200, buildStudentHomeData(authRecord, date))
     } else {
         return c.json(200, buildTeacherHomeData(authRecord, date))
     }
 })
-
 function buildStudentHomeData(student, date) {
     const studentId = student.getId()
     const batchIds = student.get("batches") || []
@@ -568,13 +589,55 @@ routerAdd("POST", "/api/mytuition/mark-attendance", (c) => {
     const body = $apis.requestInfo(c).data || {}
     const sessionId = body.sessionId
     const attendanceMap = body.attendanceMap || {} // { [studentId]: "PRESENT"|"ABSENT"|"LATE" }
-    
     if (!sessionId) return c.json(400, { error: "sessionId is required" })
-    
-    const attCol = $app.findCollectionByNameOrId("attendance")
-    let markedCount = 0
+
+let sessionRecord = null
+try {
+    sessionRecord = $app.findRecordById("class_sessions", sessionId)
+} catch (_) {
+    return c.json(404, { error: "Class session not found" })
+}
+
+const sessionTeacherId = sessionRecord.get("teacher")
+const sessionBatchId = sessionRecord.get("batch")
+
+if (!sessionBatchId) {
+    return c.json(400, { error: "Class session is not linked to a batch" })
+}
+
+if (authRecord.get("role") === "TEACHER" && sessionTeacherId !== authRecord.getId()) {
+    return c.json(403, { error: "You cannot mark attendance for another teacher's session" })
+}
+
+const attCol = $app.findCollectionByNameOrId("attendance")
+let markedCount = 0
+const absentStudentIds = []
     
     for (const [studentId, status] of Object.entries(attendanceMap)) {
+        if (!["PRESENT", "ABSENT", "LATE", "EXCUSED"].includes(status)) {
+    continue
+}
+
+let studentRecord = null
+try {
+    studentRecord = $app.findRecordById("users", studentId)
+} catch (_) {
+    continue
+}
+
+if (studentRecord.get("role") !== "STUDENT") {
+    continue
+}
+
+const studentInstituteId = studentRecord.get("institute")
+const studentBatches = studentRecord.get("batches") || []
+
+if (
+    studentInstituteId !== authRecord.get("institute") ||
+    !studentBatches.includes(sessionBatchId)
+) {
+    continue
+}
         try {
             let record = null
             try {
@@ -591,13 +654,33 @@ routerAdd("POST", "/api/mytuition/mark-attendance", (c) => {
             record.set("date", new Date().toISOString().split("T")[0])
             $app.save(record)
             markedCount++
+
+            if (status === "ABSENT") {
+                 absentStudentIds.push(studentId)
+            }
         } catch (_) {}
     }
 
     // Send OneSignal push to absent students' parents
-    const absentStudentIds = Object.entries(attendanceMap)
-        .filter(([_, status]) => status === "ABSENT")
-        .map(([studentId, _]) => studentId)
+   const absentStudentIds = []
+
+for (const [studentId, status] of Object.entries(attendanceMap)) {
+    if (status !== "ABSENT") continue
+
+    try {
+        const studentRecord = $app.findRecordById("users", studentId)
+        const studentInstituteId = studentRecord.get("institute")
+        const studentBatches = studentRecord.get("batches") || []
+
+        if (
+            studentRecord.get("role") === "STUDENT" &&
+            studentInstituteId === authRecord.get("institute") &&
+            studentBatches.includes(sessionBatchId)
+        ) {
+            absentStudentIds.push(studentId)
+        }
+    } catch (_) {}
+}
     
     if (absentStudentIds.length > 0) {
         sendOneSignalNotification(
@@ -682,14 +765,30 @@ routerAdd("GET", "/api/mytuition/student-credentials/:studentId", (c) => {
     if (!authRecord || (authRecord.get("role") !== "TEACHER" && authRecord.get("role") !== "ADMIN")) {
         return c.json(403, { error: "Unauthorized" })
     }
-    
+
     const studentId = c.pathParam("studentId")
-    const student = $app.findRecordById("users", studentId)
-    
+    let student
+    try {
+        student = $app.findRecordById("users", studentId)
+    } catch (_) {
+        return c.json(404, { error: "Student not found" })
+    }
+
+    const teacherInstituteId = authRecord.get("institute")
+    const studentInstituteId = student.get("institute")
+    if (!teacherInstituteId || teacherInstituteId !== studentInstituteId) {
+        return c.json(403, { error: "Student does not belong to your institute" })
+    }
+
+    const initialPassword = student.get("initialPassword")
+    if (!initialPassword) {
+        return c.json(404, { error: "Initial password is not available" })
+    }
+
     return c.json(200, {
         studentId: student.getId(),
         username: student.get("username"),
-        password: student.get("initialPassword") || "ayush@123",
+        password: initialPassword,
         name: student.get("name")
     })
 })
@@ -700,28 +799,76 @@ routerAdd("GET", "/api/mytuition/student-credentials/:studentId", (c) => {
 // ==========================================
 routerAdd("POST", "/api/mytuition/reset-password/:studentId", (c) => {
     const authRecord = c.get("authRecord")
-    if (!authRecord || (authRecord.get("role") !== "TEACHER" && authRecord.get("role") !== "ADMIN")) {
+
+    if (!authRecord ||
+        (authRecord.get("role") !== "TEACHER" &&
+         authRecord.get("role") !== "ADMIN")) {
         return c.json(403, { error: "Unauthorized" })
     }
-    
+
     const studentId = c.pathParam("studentId")
     const body = $apis.requestInfo(c).data || {}
-    const student = $app.findRecordById("users", studentId)
-    
-    const firstName = (student.get("name") || "student").split(" ")[0].toLowerCase().substring(0, 8)
-    const newPass = body.newPassword || `${firstName}@123`
-    
+
+    let student
+    try {
+        student = $app.findRecordById("users", studentId)
+    } catch (_) {
+        return c.json(404, { error: "Student not found" })
+    }
+
+    const teacherInstituteId = authRecord.get("institute")
+    const studentInstituteId = student.get("institute")
+
+    if (!teacherInstituteId ||
+        teacherInstituteId !== studentInstituteId) {
+        return c.json(403, { error: "Student does not belong to your institute" })
+    }
+
+    if (authRecord.get("role") === "TEACHER") {
+        const studentBatchIds = student.get("batches") || []
+        let ownsBatch = false
+
+        for (const batchId of studentBatchIds) {
+            try {
+                const batch = $app.findRecordById("batches", batchId)
+                if (batch.get("teacher") === authRecord.getId()) {
+                    ownsBatch = true
+                    break
+                }
+            } catch (_) {}
+        }
+
+        if (!ownsBatch) {
+            return c.json(403, { error: "You are not authorized to reset this student's password" })
+        }
+    }
+
+    const firstName = (student.get("name") || "student")
+        .split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 8)
+
+    const newPass = body.newPassword
+        ? String(body.newPassword).trim()
+        : generateStudentPassword()
+
+    if (newPass.length < 8) {
+        return c.json(400, { error: "Password must contain at least 8 characters" })
+    }
+
     student.setPassword(newPass)
-    student.set("initialPassword", newPass)
-    $app.save(student)
-    
+
+    try {
+        $app.save(student)
+    } catch (_) {
+        return c.json(500, { error: "Failed to update password" })
+    }
+
     return c.json(200, {
         studentId: studentId,
         username: student.get("username"),
-        password: newPass
+        password: newPass,
+        name: student.get("name")
     })
 })
-
 // ==========================================
 // 7. OFFLINE FEE PAYMENT MANAGEMENT (Teacher / Admin Only)
 // POST /api/mytuition/mark-fee-paid
@@ -1056,4 +1203,3 @@ function sendOneSignalNotification(userIds, title, message, data = {}) {
         })
     } catch (_) {}
 }
-

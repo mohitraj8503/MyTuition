@@ -7,14 +7,31 @@ import com.example.mytuition.core.data.network.PbResetPasswordRequest
 import com.example.mytuition.core.data.network.PocketBaseApi
 import com.example.mytuition.core.domain.model.*
 import com.example.mytuition.core.domain.repository.TeacherRepository
+import com.example.mytuition.core.data.local.TokenManager
 import java.text.SimpleDateFormat
 import java.util.*
 
 class PocketBaseTeacherRepository(
-    private val api: PocketBaseApi
+    private val api: PocketBaseApi,
+    private val tokenManager: TokenManager
 ) : TeacherRepository {
 
     override suspend fun getTeacherHomeData(date: String): Result<TeacherHomeData> {
+        val token = tokenManager.getTokenSync()
+
+        if (token?.startsWith("demo_") == true) {
+            return Result.success(
+                TeacherHomeData(
+                    teacherName = "Mr. Rakesh Sharma",
+                    teacherId = "teacher_001",
+                    instituteName = "Chanakya Classes",
+                    totalStudentsCount = 45,
+                    pendingAttendanceCount = 3,
+                    latestHomeworkStats = "5 pending",
+                    todayAnnouncementsCount = 2
+                )
+            )
+        }
         return try {
             val resp = api.getTeacherHomeData(date)
             if (resp.isSuccessful && resp.body() != null) {
@@ -81,25 +98,98 @@ class PocketBaseTeacherRepository(
             Result.failure(e)
         }
     }
+override suspend fun getBatchStudents(batchId: String): Result<List<StudentRosterItem>> {
+    val token = tokenManager.getTokenSync()
 
-    override suspend fun getBatchStudents(batchId: String): Result<List<StudentRosterItem>> {
-        return try {
-            val filterQuery = if (batchId.isNotBlank()) "role = 'STUDENT' && batches ~ '$batchId'" else "role = 'STUDENT'"
-            val resp = api.getUsers(filter = filterQuery)
-            if (resp.isSuccessful && resp.body() != null) {
-                val students = resp.body()!!.items
-                val list = students.map { u ->
-                    buildStudentRosterItem(u)
-                }
-                Result.success(list)
-            } else {
-                Result.failure(Exception("Failed to load batch students: ${resp.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    if (token?.startsWith("demo_") == true) {
+        val demoStudents = listOf(
+            StudentRosterItem(
+                studentId = "demo_student_001",
+                username = "ayush",
+                name = "Ayush Sharma",
+                rollNumber = "01",
+                classGrade = "Class 10",
+                section = "A",
+                attendancePercent = 92,
+                pendingHomeworkCount = 1,
+                parentName = "Rajesh Sharma",
+                parentPhone = "9876543210"
+            ),
+            StudentRosterItem(
+                studentId = "demo_student_002",
+                username = "priya",
+                name = "Priya Verma",
+                rollNumber = "02",
+                classGrade = "Class 10",
+                section = "A",
+                attendancePercent = 88,
+                pendingHomeworkCount = 2,
+                parentName = "Sunita Verma",
+                parentPhone = "9876543211"
+            ),
+            StudentRosterItem(
+                studentId = "demo_student_003",
+                username = "rohan",
+                name = "Rohan Kumar",
+                rollNumber = "03",
+                classGrade = "Class 10",
+                section = "A",
+                attendancePercent = 95,
+                pendingHomeworkCount = 0,
+                parentName = "Anil Kumar",
+                parentPhone = "9876543212"
+            ),
+            StudentRosterItem(
+                studentId = "demo_student_004",
+                username = "sneha",
+                name = "Sneha Patel",
+                rollNumber = "04",
+                classGrade = "Class 10",
+                section = "A",
+                attendancePercent = 76,
+                pendingHomeworkCount = 3,
+                parentName = "Meena Patel",
+                parentPhone = "9876543213"
+            ),
+            StudentRosterItem(
+                studentId = "demo_student_005",
+                username = "arjun",
+                name = "Arjun Rao",
+                rollNumber = "05",
+                classGrade = "Class 10",
+                section = "A",
+                attendancePercent = 85,
+                pendingHomeworkCount = 1,
+                parentName = "Suresh Rao",
+                parentPhone = "9876543214"
+            )
+        )
+
+        return Result.success(demoStudents)
     }
 
+    return try {
+        val filterQuery = if (batchId.isNotBlank()) {
+            "role = 'STUDENT' && batches ~ '$batchId'"
+        } else {
+            "role = 'STUDENT'"
+        }
+
+        val resp = api.getUsers(filter = filterQuery)
+
+        if (resp.isSuccessful && resp.body() != null) {
+            val students = resp.body()!!.items
+            val list = students.map { u ->
+                buildStudentRosterItem(u)
+            }
+            Result.success(list)
+        } else {
+            Result.failure(Exception("Failed to load batch students: ${resp.code()}"))
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+}
     private suspend fun buildStudentRosterItem(u: com.example.mytuition.core.data.network.PbUserRecord): StudentRosterItem {
         // Attendance calculation from attendance records
         var attendancePercent = 0
@@ -161,6 +251,7 @@ class PocketBaseTeacherRepository(
 
         return StudentRosterItem(
             studentId = u.id,
+            username = u.username ?:"",
             name = u.name ?: "Student",
             rollNumber = u.rollNumber ?: "",
             avatarUrl = null,
@@ -179,25 +270,41 @@ class PocketBaseTeacherRepository(
             latestFeeDueDate = latestFeeDueDate
         )
     }
+override suspend fun markAttendance(
+    sessionId: String,
+    attendanceMap: Map<String, AttendanceStatus>,
+    notifyParents: Boolean
+): Result<Unit> {
 
-    override suspend fun markAttendance(
-        sessionId: String,
-        attendanceMap: Map<String, AttendanceStatus>,
-        notifyParents: Boolean
-    ): Result<Unit> {
-        return try {
-            val reqMap = attendanceMap.mapValues { it.value.name }
-            val resp = api.markAttendance(PbMarkAttendanceRequest(sessionId, reqMap, notifyParents))
-            if (resp.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Failed to mark attendance: ${resp.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    val token = tokenManager.getTokenSync()
+
+    // Demo mode: simulate a successful attendance save locally.
+    if (token?.startsWith("demo_") == true) {
+        return Result.success(Unit)
     }
 
+    return try {
+        val reqMap = attendanceMap.mapValues { it.value.name }
+
+        val resp = api.markAttendance(
+            PbMarkAttendanceRequest(
+                sessionId = sessionId,
+                attendanceMap = reqMap,
+                notifyParents = notifyParents
+            )
+        )
+
+        if (resp.isSuccessful) {
+            Result.success(Unit)
+        } else {
+            Result.failure(
+                Exception("Failed to mark attendance: ${resp.code()}")
+            )
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+}
     override suspend fun getTeacherHomeworkList(): Result<List<TeacherHomeworkSummary>> {
         return try {
             val resp = api.getHomeworkList()
@@ -299,7 +406,15 @@ class PocketBaseTeacherRepository(
         notifyStudents: Boolean
     ): Result<String> {
         return try {
-            val resp = api.createHomework(PbCreateHomeworkRequest(batchId, title, description, dueDate))
+           val resp = api.createHomework(
+                PbCreateHomeworkRequest(
+                   batchId = batchId,
+                   title = title,
+                   description = description,
+                   dueDate = dueDate,
+                   notifyStudents = notifyStudents
+                  )
+                )
             if (resp.isSuccessful && resp.body() != null) {
                 Result.success(resp.body()!!.homeworkId)
             } else {

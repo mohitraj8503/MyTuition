@@ -90,7 +90,10 @@ data class PbCreateHomeworkRequest(
     val batchId: String,
     val title: String,
     val description: String = "",
-    val dueDate: String
+    val dueDate: String,
+    val chapter: String? = null,
+    val subjectId: String? = null,
+    val notifyStudents: Boolean = true
 )
 
 @JsonClass(generateAdapter = true)
@@ -368,4 +371,3 @@ data class PbCreateBatchRequest(
 data class PbRemindPendingHomeworkRequest(
     val homeworkId: String
 )
-

@@ -39,6 +39,9 @@ interface FeatureCacheDao {
 
     @Query("DELETE FROM app_feature_cache WHERE key = :key")
     suspend fun clearKey(key: String)
+
+    @Query("DELETE FROM app_feature_cache WHERE substr(key, 1, 18) = 'library_resources_'")
+    suspend fun clearLibraryCaches()
 }
 
 @Database(entities = [HomeDataCacheEntity::class, FeatureCacheEntity::class], version = 2, exportSchema = false)

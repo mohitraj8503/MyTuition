@@ -17,7 +17,9 @@ import kotlinx.coroutines.launch
 sealed interface HomeUiState {
     object Loading : HomeUiState
     data class Success(
-        val data: HomeData
+        val data: HomeData,
+        val isRefreshing: Boolean = false,
+        val refreshError: String? = null
     ) : HomeUiState {
         val studentName: String get() = data.studentName
         val className: String get() = data.className
@@ -38,6 +40,7 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private var requestGeneration = 0L
     private var currentDate: String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
 
     init {
@@ -46,14 +49,48 @@ class HomeViewModel(
 
     fun loadHomeData(date: String = currentDate) {
         currentDate = date
+        val requestId = ++requestGeneration
+        _uiState.value = HomeUiState.Loading
+
         viewModelScope.launch {
-            _uiState.value = HomeUiState.Loading
             val result = homeRepository.getHomeData(date)
+
+            if (requestId != requestGeneration) return@launch
+
             result.onSuccess { data ->
                 _uiState.value = HomeUiState.Success(data)
             }.onFailure { error ->
                 _uiState.value = HomeUiState.Error(
                     error.localizedMessage ?: "Failed to load tuition schedule. Please retry."
+                )
+            }
+        }
+    }
+
+    fun refreshHomeData() {
+        val currentState = _uiState.value as? HomeUiState.Success ?: return
+        if (currentState.isRefreshing) return
+
+        val existingData = currentState.data
+        val requestId = ++requestGeneration
+
+        _uiState.value = HomeUiState.Success(
+            data = existingData,
+            isRefreshing = true
+        )
+
+        viewModelScope.launch {
+            val result = homeRepository.getHomeData(currentDate)
+
+            if (requestId != requestGeneration) return@launch
+
+            result.onSuccess { data ->
+                _uiState.value = HomeUiState.Success(data)
+            }.onFailure { error ->
+                _uiState.value = HomeUiState.Success(
+                    data = existingData,
+                    refreshError = error.localizedMessage
+                        ?: "Unable to refresh. Showing previously loaded data."
                 )
             }
         }
@@ -65,6 +102,7 @@ class HomeViewModel(
     }
 
     fun logout(onLogoutSuccess: () -> Unit) {
+        requestGeneration++
         viewModelScope.launch {
             authRepository.logout()
             onLogoutSuccess()

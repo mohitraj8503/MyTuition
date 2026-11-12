@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.rounded.Brush
 import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material.icons.rounded.ColorLens
@@ -153,24 +154,74 @@ fun HomeScreen(
                             }
                         }
 
-                        // Profile Avatar (48.dp circle, purple ring 3.dp, shadow 6.dp)
+                        IconButton(
+                            onClick = { viewModel.refreshHomeData() },
+                            enabled = !uiState.isRefreshing
+                        ) {
+                            if (uiState.isRefreshing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MyTuitionColors.PrimaryPurple
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh dashboard",
+                                    tint = MyTuitionColors.PrimaryPurple
+                                )
+                            }
+                        }
+
+                        // Student profile avatar: real image when available, initials otherwise.
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
                                 .shadow(6.dp, CircleShape, spotColor = MyTuitionColors.PrimaryPurple.copy(alpha = 0.3f))
                                 .border(3.dp, MyTuitionColors.PrimaryPurple, CircleShape)
                                 .clip(CircleShape)
-                                .background(MyTuitionColors.PrimaryPurpleLight)
-                                .clickable { onLogout() },
+                                .background(MyTuitionColors.PrimaryPurpleLight),
                             contentAlignment = Alignment.Center
                         ) {
-                            AsyncImage(
-                                model = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
-                                contentDescription = "Profile",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                            val avatarUrl = uiState.data.avatarUrl?.takeIf { it.isNotBlank() }
+
+                            if (avatarUrl != null) {
+                                AsyncImage(
+                                    model = avatarUrl,
+                                    contentDescription = "${uiState.studentName} profile photo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                val initials = uiState.studentName
+                                    .trim()
+                                    .split(Regex("\\s+"))
+                                    .filter { it.isNotBlank() }
+                                    .take(2)
+                                    .mapNotNull { it.firstOrNull()?.uppercaseChar() }
+                                    .joinToString("")
+
+                                Text(
+                                    text = initials.ifBlank { "S" },
+                                    style = MyTuitionTypography.TitleLarge.copy(
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MyTuitionColors.PrimaryPurple
+                                    )
+                                )
+                            }
                         }
+                    }
+
+                    uiState.refreshError?.let { refreshError ->
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = refreshError,
+                            style = MyTuitionTypography.LabelSmall.copy(
+                                color = MyTuitionColors.TextSecondary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     // Emergency Banner (Urgent announcement or cancelled session)

@@ -1,7 +1,9 @@
 package com.example.mytuition.core.data.repository
 
+import com.example.mytuition.core.data.local.AppDatabase
 import com.example.mytuition.core.data.local.TokenManager
 import com.example.mytuition.core.data.network.PocketBaseApi
+import kotlinx.coroutines.CancellationException
 import com.example.mytuition.core.domain.model.TeacherInfo
 import com.example.mytuition.core.domain.model.UserRole
 import com.example.mytuition.core.domain.model.UserSession
@@ -10,7 +12,8 @@ import kotlinx.coroutines.flow.first
 
 class PocketBaseAuthRepository(
     private val api: PocketBaseApi,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val database: AppDatabase? = null
 ) : AuthRepository {
 
     override suspend fun signInWithGoogle(): Result<UserSession> {
@@ -180,6 +183,22 @@ class PocketBaseAuthRepository(
 
     override suspend fun logout() {
         tokenManager.clearSession()
+
+        try {
+            database?.homeDataCacheDao()?.clear()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            // Dashboard cache cleanup must not prevent the user from logging out.
+        }
+
+        try {
+            database?.featureCacheDao()?.clearLibraryCaches()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            // Cache cleanup must not prevent the user from logging out.
+        }
         com.example.mytuition.core.notifications.OneSignalHelper.logout()
     }
 }

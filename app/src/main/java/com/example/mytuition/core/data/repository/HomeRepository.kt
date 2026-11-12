@@ -1,5 +1,8 @@
 package com.example.mytuition.core.data.repository
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
+
 import com.example.mytuition.core.data.local.AppDatabase
 import com.example.mytuition.core.data.local.HomeDataCacheEntity
 import com.example.mytuition.core.data.local.TokenManager
@@ -20,7 +23,15 @@ class HomeRepository(
     private val moshi = Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
     private val adapter = moshi.adapter(HomeData::class.java)
 
+    private suspend fun getCacheKey(date: String): String? {
+        val manager = tokenManager ?: return null
+        val userId = manager.getUserIdSync()?.takeIf { it.isNotBlank() } ?: return null
+        val instituteId = manager.getInstituteId().first()?.takeIf { it.isNotBlank() } ?: return null
+        return "home_data_${instituteId}_${userId}_$date"
+    }
+
     suspend fun getHomeData(date: String): Result<HomeData> {
+        val requestCacheKey = getCacheKey(date)
         // 1. Try real PocketBase network API
         if (api != null) {
             try {
@@ -104,32 +115,44 @@ class HomeRepository(
                         announcements = announcements
                     )
 
-                    // Cache in Room
+                    // Cache only if the account that initiated this request is still active.
                     try {
-                        val json = adapter.toJson(homeData)
-                        database?.homeDataCacheDao()?.saveHomeData(
-                            HomeDataCacheEntity(date = date, dataJson = json)
-                        )
-                    } catch (_: Exception) {}
+                        if (requestCacheKey != null && requestCacheKey == getCacheKey(date)) {
+                            val json = adapter.toJson(homeData)
+                            database?.homeDataCacheDao()?.saveHomeData(
+                                HomeDataCacheEntity(date = requestCacheKey, dataJson = json)
+                            )
+                        }
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (_: Exception) {
+                        // Cache failure must not fail a successful network response.
+                    }
 
                     return Result.success(homeData)
                 }
-            } catch (networkEx: Exception) {
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
                 // Network failed -> fallback only to Room database cache
             }
         }
 
         // 2. Offline Fallback: Room Database cache ONLY (no static fallback models)
-        if (database != null) {
+        if (database != null && requestCacheKey != null && requestCacheKey == getCacheKey(date)) {
             try {
-                val cached = database.homeDataCacheDao().getHomeData(date)
+                val cached = database.homeDataCacheDao().getHomeData(requestCacheKey)
                 if (cached != null && cached.dataJson.isNotBlank()) {
                     val parsed = adapter.fromJson(cached.dataJson)
                     if (parsed != null) {
                         return Result.success(parsed.copy(isFromCache = true))
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                // Cache read failure falls through to the normal network error.
+            }
         }
 
         return Result.failure(Exception("Unable to load home data. Please check your network connection."))

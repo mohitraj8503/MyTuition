@@ -1,3 +1,4 @@
+
 package com.example.mytuition.feature.home
 
 import androidx.compose.foundation.background
@@ -6,7 +7,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MenuBook
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Assignment
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,8 +18,8 @@ import com.example.mytuition.core.designsystem.components.BottomNavItem
 import com.example.mytuition.core.designsystem.components.FloatingBottomNav
 import com.example.mytuition.feature.calendar.CalendarScreen
 import com.example.mytuition.feature.homework.HomeworkScreen
+import com.example.mytuition.feature.library.LibraryScreen
 import com.example.mytuition.feature.profile.ProfileScreen
-import com.example.mytuition.feature.subjects.SubjectsScreen
 
 @Composable
 fun MainScreen(
@@ -27,11 +30,20 @@ fun MainScreen(
 ) {
     var activeIndex by remember { mutableIntStateOf(0) }
 
+    val homeViewModel: HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = HomeViewModel.provideFactory(
+            com.example.mytuition.core.di.AppContainer.homeRepository,
+            com.example.mytuition.core.di.AppContainer.authRepository
+        )
+    )
+
     val navItems = remember {
         listOf(
             BottomNavItem("Home", Icons.Rounded.Home),
             BottomNavItem("Calendar", Icons.Rounded.CalendarToday),
+            BottomNavItem("Homework", Icons.Rounded.Assignment),
             BottomNavItem("Resources", Icons.Rounded.MenuBook),
+            BottomNavItem("Notices", Icons.Rounded.Notifications),
             BottomNavItem("Profile", Icons.Rounded.Person)
         )
     }
@@ -41,22 +53,34 @@ fun MainScreen(
             .fillMaxSize()
             .background(MyTuitionColors.ScreenBackground)
     ) {
-        // Content Area
         Box(modifier = Modifier.fillMaxSize()) {
             when (activeIndex) {
                 0 -> HomeScreen(
                     onLogout = onLogout,
                     onNavigateToClassDetail = onNavigateToClassDetail,
                     onNavigateToHomeworkDetail = onNavigateToHomeworkDetail,
-                    onNavigateToSubjectDetail = onNavigateToSubjectDetail
+                    onNavigateToSubjectDetail = onNavigateToSubjectDetail,
+                    viewModel = homeViewModel
                 )
+
                 1 -> CalendarScreen()
-                2 -> HomeworkScreen(onNavigateToDetail = onNavigateToHomeworkDetail)
-                3 -> ProfileScreen(onLogout = onLogout)
+
+                2 -> HomeworkScreen(
+                    onNavigateToDetail = onNavigateToHomeworkDetail
+                )
+
+                3 -> LibraryScreen()
+
+                4 -> AnnouncementsScreen(
+                    viewModel = homeViewModel
+                )
+
+                5 -> ProfileScreen(
+                    onLogout = onLogout
+                )
             }
         }
 
-        // Floating Bottom Navigation
         FloatingBottomNav(
             items = navItems,
             activeIndex = activeIndex,

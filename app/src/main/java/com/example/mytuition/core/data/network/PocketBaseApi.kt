@@ -1,5 +1,6 @@
 package com.example.mytuition.core.data.network
 
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -169,6 +170,8 @@ interface PocketBaseApi {
     suspend fun getResources(
         @Query("filter") filter: String? = null,
         @Query("sort") sort: String? = "-created",
+        @Query("expand") expand: String? = "subject,batch",
+        @Query("page") page: Int = 1,
         @Query("perPage") perPage: Int = 50
     ): Response<PbListResponse<PbResourceRecord>>
 
@@ -207,4 +210,11 @@ interface PocketBaseApi {
         @Query("sort") sort: String? = "date,startTime",
         @Query("perPage") perPage: Int = 50
     ): Response<PbListResponse<PbClassSessionRecord>>
+
+    // === RESOURCE FILE DOWNLOAD ===
+    @Streaming
+    @GET
+    suspend fun downloadResource(
+        @Url fileUrl: String
+    ): Response<ResponseBody>
 }

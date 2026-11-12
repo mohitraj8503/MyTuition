@@ -40,6 +40,7 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    private var requestGeneration = 0L
     private var currentDate: String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
 
     init {
@@ -48,9 +49,14 @@ class HomeViewModel(
 
     fun loadHomeData(date: String = currentDate) {
         currentDate = date
+        val requestId = ++requestGeneration
+        _uiState.value = HomeUiState.Loading
+
         viewModelScope.launch {
-            _uiState.value = HomeUiState.Loading
             val result = homeRepository.getHomeData(date)
+
+            if (requestId != requestGeneration) return@launch
+
             result.onSuccess { data ->
                 _uiState.value = HomeUiState.Success(data)
             }.onFailure { error ->
@@ -62,15 +68,21 @@ class HomeViewModel(
     }
 
     fun refreshHomeData() {
-        val existingData = (_uiState.value as? HomeUiState.Success)?.data ?: return
+        val currentState = _uiState.value as? HomeUiState.Success ?: return
+        if (currentState.isRefreshing) return
+
+        val existingData = currentState.data
+        val requestId = ++requestGeneration
+
+        _uiState.value = HomeUiState.Success(
+            data = existingData,
+            isRefreshing = true
+        )
 
         viewModelScope.launch {
-            _uiState.value = HomeUiState.Success(
-                data = existingData,
-                isRefreshing = true
-            )
-
             val result = homeRepository.getHomeData(currentDate)
+
+            if (requestId != requestGeneration) return@launch
 
             result.onSuccess { data ->
                 _uiState.value = HomeUiState.Success(data)
@@ -83,12 +95,14 @@ class HomeViewModel(
             }
         }
     }
+
     fun selectDate(date: String) {
         if (date == currentDate) return
         loadHomeData(date)
     }
 
     fun logout(onLogoutSuccess: () -> Unit) {
+        requestGeneration++
         viewModelScope.launch {
             authRepository.logout()
             onLogoutSuccess()

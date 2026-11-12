@@ -62,10 +62,10 @@ object AppContainer {
         database = AppDatabase.getInstance(appContext)
         pocketBaseApi = PocketBaseClient.create(tokenManager)
 
-        authRepository = PocketBaseAuthRepository(pocketBaseApi, tokenManager)
+        authRepository = PocketBaseAuthRepository(pocketBaseApi, tokenManager, database)
         homeworkRepository = PocketBaseHomeworkRepository(pocketBaseApi, tokenManager, database)
         subjectRepository = PocketBaseSubjectRepository(pocketBaseApi, database)
-        libraryRepository = PocketBaseLibraryRepository(pocketBaseApi, database)
+        libraryRepository = PocketBaseLibraryRepository(pocketBaseApi, tokenManager, database)
         homeRepository = PocketBaseHomeRepository(pocketBaseApi, tokenManager, database)
         feeRepository = PocketBaseFeeRepository(pocketBaseApi)
         profileRepository = PocketBaseProfileRepository(pocketBaseApi, tokenManager)

@@ -145,7 +145,9 @@ class LibraryViewModel(
 
         val filtered = all.filter { resource ->
             val matchesSearch = query.isBlank() ||
-                resource.title.contains(query, ignoreCase = true)
+                resource.title.contains(query, ignoreCase = true) ||
+                resource.subject?.contains(query, ignoreCase = true) == true ||
+                resource.batch?.contains(query, ignoreCase = true) == true
 
             val matchesType = selected == null || resource.type == selected
             val matchesSubject = subject == null || resource.subject == subject

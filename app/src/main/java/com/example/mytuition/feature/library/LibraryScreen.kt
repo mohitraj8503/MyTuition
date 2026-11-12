@@ -26,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,11 +69,10 @@ fun LibraryScreen(
         selectedType != null ||
         selectedSubject != null ||
         selectedBatch != null
-
-    val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val sharingResourceId = remember { mutableStateOf<String?>(null) }
+    val openingResourceId = remember { mutableStateOf<String?>(null) }
     val pocketBaseApi = AppContainer.pocketBaseApi
 
     val isFromCache = when (val current = state) {
@@ -372,20 +370,31 @@ fun LibraryScreen(
                             ResourceCard(
                                 resource = resource,
                                 onOpen = {
-                                    resource.url?.let { url ->
-                                        runCatching {
-                                            uriHandler.openUri(url)
-                                        }.onFailure { exception ->
-                                            Toast.makeText(
-                                                context,
-                                                exception.message ?: "Unable to open resource.",
-                                                Toast.LENGTH_LONG
-                                            ).show()
+                                    if (sharingResourceId.value == null && openingResourceId.value == null) {
+                                        openingResourceId.value = resource.id
+                                        scope.launch {
+                                            try {
+                                                LibraryFileSharer.open(
+                                                    context,
+                                                    pocketBaseApi,
+                                                    resource
+                                                )
+                                            } catch (exception: CancellationException) {
+                                                throw exception
+                                            } catch (exception: Exception) {
+                                                Toast.makeText(
+                                                    context,
+                                                    exception.message ?: "Unable to open resource.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            } finally {
+                                                openingResourceId.value = null
+                                            }
                                         }
                                     }
                                 },
                                 onShare = {
-                                    if (sharingResourceId.value == null) {
+                                    if (sharingResourceId.value == null && openingResourceId.value == null) {
                                         sharingResourceId.value = resource.id
                                         scope.launch {
                                             try {
@@ -409,7 +418,9 @@ fun LibraryScreen(
                                     }
                                 },
                                 isSharing = sharingResourceId.value == resource.id,
-                                isShareEnabled = sharingResourceId.value == null
+                                isOpening = openingResourceId.value == resource.id,
+                                isOpenEnabled = sharingResourceId.value == null && openingResourceId.value == null,
+                                isShareEnabled = sharingResourceId.value == null && openingResourceId.value == null
                             )
                         }
 
@@ -434,6 +445,8 @@ private fun ResourceCard(
     onOpen: () -> Unit,
     onShare: () -> Unit,
     isSharing: Boolean,
+    isOpening: Boolean,
+    isOpenEnabled: Boolean,
     isShareEnabled: Boolean
 ) {
     val hasUrl = !resource.url.isNullOrBlank()
@@ -495,9 +508,9 @@ private fun ResourceCard(
             ) {
                 TextButton(
                     onClick = onOpen,
-                    enabled = hasUrl
+                    enabled = hasUrl && isOpenEnabled && !isOpening
                 ) {
-                    Text("Open")
+                    Text(if (isOpening) "Opening..." else "Open")
                 }
 
                 TextButton(

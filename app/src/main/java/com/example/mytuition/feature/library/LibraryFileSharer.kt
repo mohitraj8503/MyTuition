@@ -1,5 +1,6 @@
 ﻿package com.example.mytuition.feature.library
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
@@ -7,6 +8,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import android.webkit.MimeTypeMap
 import com.example.mytuition.core.data.network.PocketBaseApi
+import com.example.mytuition.core.data.network.PocketBaseClient
 import com.example.mytuition.core.domain.model.Resource
 import com.example.mytuition.core.domain.model.ResourceType
 import kotlinx.coroutines.Dispatchers
@@ -14,28 +16,79 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.net.URI
-import com.example.mytuition.core.data.network.PocketBaseClient
 
 object LibraryFileSharer {
+
+    suspend fun open(
+        context: Context,
+        api: PocketBaseApi,
+        resource: Resource
+    ) {
+        val appContext = context.applicationContext
+        val downloadedFile = downloadResource(appContext, api, resource)
+        val contentUri = getContentUri(appContext, downloadedFile)
+        val mimeType = getMimeType(downloadedFile)
+
+        val openIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(contentUri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            appContext.startActivity(openIntent)
+        } catch (_: ActivityNotFoundException) {
+            throw IOException("No installed app can open this file type.")
+        }
+    }
 
     suspend fun share(
         context: Context,
         api: PocketBaseApi,
         resource: Resource
     ) {
+        val appContext = context.applicationContext
+        val downloadedFile = downloadResource(appContext, api, resource)
+        val contentUri = getContentUri(appContext, downloadedFile)
+        val mimeType = getMimeType(downloadedFile)
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_STREAM, contentUri)
+            clipData = ClipData.newUri(
+                appContext.contentResolver,
+                downloadedFile.name,
+                contentUri
+            )
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        appContext.startActivity(
+            Intent.createChooser(shareIntent, "Share resource")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+
+    private suspend fun downloadResource(
+        context: Context,
+        api: PocketBaseApi,
+        resource: Resource
+    ): File {
         val fileUrl = resource.url
             ?.takeIf { it.isNotBlank() }
             ?: throw IOException("This resource does not have a file URL.")
 
         ensureTrustedPocketBaseUrl(fileUrl)
 
-        val appContext = context.applicationContext
+        return withContext(Dispatchers.IO) {
+            val directory = File(context.cacheDir, "shared_resources")
 
-        val downloadedFile = withContext(Dispatchers.IO) {
-            val directory = File(appContext.cacheDir, "shared_resources")
             if (!directory.exists() && !directory.mkdirs()) {
                 throw IOException("Could not create the resource cache directory.")
             }
+
+            cleanupOldFiles(directory)
 
             val extension = getExtension(fileUrl, resource.type)
             val safeTitle = resource.title
@@ -53,6 +106,7 @@ object LibraryFileSharer {
                 val response = api.downloadResource(fileUrl)
 
                 if (!response.isSuccessful) {
+                    response.errorBody()?.close()
                     throw IOException(
                         "Download failed: HTTP ${response.code()} ${response.message()}"
                     )
@@ -77,32 +131,28 @@ object LibraryFileSharer {
                 throw exception
             }
         }
+    }
 
-        val contentUri = FileProvider.getUriForFile(
+    private fun getContentUri(context: Context, file: File): Uri {
+        return FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
-            downloadedFile
+            file
         )
+    }
 
-        val mimeType = MimeTypeMap.getSingleton()
-            .getMimeTypeFromExtension(downloadedFile.extension.lowercase())
+    private fun getMimeType(file: File): String {
+        return MimeTypeMap.getSingleton()
+            .getMimeTypeFromExtension(file.extension.lowercase())
             ?: "application/octet-stream"
+    }
 
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = mimeType
-            putExtra(Intent.EXTRA_STREAM, contentUri)
-            clipData = ClipData.newUri(
-                context.contentResolver,
-                downloadedFile.name,
-                contentUri
-            )
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+    private fun cleanupOldFiles(directory: File) {
+        val expiryTime = System.currentTimeMillis() - 24L * 60L * 60L * 1000L
 
-        context.startActivity(
-            Intent.createChooser(shareIntent, "Share resource")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        )
+        directory.listFiles()
+            ?.filter { it.isFile && it.lastModified() < expiryTime }
+            ?.forEach { it.delete() }
     }
 
     private fun ensureTrustedPocketBaseUrl(fileUrl: String) {

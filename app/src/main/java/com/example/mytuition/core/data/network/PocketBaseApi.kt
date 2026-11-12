@@ -170,6 +170,8 @@ interface PocketBaseApi {
     suspend fun getResources(
         @Query("filter") filter: String? = null,
         @Query("sort") sort: String? = "-created",
+        @Query("expand") expand: String? = "subject,batch",
+        @Query("page") page: Int = 1,
         @Query("perPage") perPage: Int = 50
     ): Response<PbListResponse<PbResourceRecord>>
 
